@@ -1,0 +1,7 @@
+# BES's root environment for using convolution of PDFs in RooFit: RooFFTConvPdf
+setenv ROOTSYS /afs/ihep.ac.cn/bes3/offline/ExternalLib/lcg/app/releases/ROOT/5.24.00b/x86_64-slc5-gcc43-opt/root
+setenv DYLD_LIBRARY_PATH $ROOTSYS/lib:${DYLD_LIBRARY_PATH}
+setenv PYTHONPATH $ROOTSYS/lib:${PYTHONPATH}
+setenv MANPATH $ROOTSYS/:${MANPATH}
+setenv LD_LIBRARY_PATH $ROOTSYS/lib:${LD_LIBRARY_PATH}
+setenv PATH $ROOTSYS/bin:${PATH}

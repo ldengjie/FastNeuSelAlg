@@ -1,0 +1,66 @@
+//loaded dlls
+LafMain.Dlls += {"FastNeuSelAlg"};
+AlgMgr.Contents += {"FastNeuSelAlg"};
+
+//====================================
+FastNeuSelAlg.RunNum=RUNNUM;
+FastNeuSelAlg.ShiftTimeFile="/afs/ihep.ac.cn/users/l/lidj/file/FastNeuSelAlg/TimeShift/diffRUNNUM.txt";
+//====================================
+//the cycler
+LafMain.Dlls += {"SelCycler"};
+SvcMgr.Contents += {"SelCycler"};
+
+SelCycler.Tags = { "ForceTrigTag", "CrossTrigTag", "RpcNoiseTag", "FlasherTag", "MuonTag", "AdEnergyTag"};
+SelCycler.TimeWindow = { -0.1, 0.1};
+SelCycler.KeepFirstEvtEachFile = TRUE;
+
+FlasherTag.RatioMaxQCut = 0.45;
+FlasherTag.QuadrantCut = 1.;
+FlasherTag.calibPMTFlasherCut = 100.;
+
+// every tag should be set to ApplyVeto or not
+FlasherTag.ApplyVeto = TRUE;
+CrossTrigTag.ApplyVeto = TRUE;
+ForceTrigTag.ApplyVeto = TRUE;
+RpcNoiseTag.ApplyVeto = TRUE;
+MuonTag.ApplyVeto = FALSE;
+AdEnergyTag.ApplyVeto = TRUE;
+
+//Set FanCycler as the Cycler of LAF
+LafMain.Cycler = "FanCycler";
+FanCycler.TimeWindow = { -2.02e-4, 4.02e-4 };
+
+FanCycler.Tags = { "FanAdMuonTag" };
+FanAdMuonTag.ApplyVeto = FALSE;
+FanAdMuonTag.AdMuonThreshold = 100.; // MeV
+FanAdMuonTag.ShowerMuonThreshold = 2500.; // MeV
+FanAdMuonTag.CoincWindow = { -2e-6, 2e-6 };  // +/-2us
+
+GlobalVar.NumADs = 3;
+//====================================
+//input service and files
+LafMain.InputSvc = "INPUTSVC";
+INPUTSVC.PreferredRecTree = "Event/Rec/RECTREE";
+ReconInputSvc.PreferredEnergy = "energy";
+INPUTSVC.InputFiles ={"INPUTFILELISTPATH/LISTSITE/FILENAME"};
+
+LafMain.EvtMax   = -1;
+LafMain.LogLevel = 3;
+
+//root file (TNtuple, TTree, THist) output
+//TOutputSvc.Output += {"FILE1":"OUTPUTFILEPATH/SITE/FILE1NAME" };
+TOutputSvc.Output += {"FILE2":"OUTPUTFILEPATH/SITE/FILE2NAME" };
+
+//===================================
+//MuonVeto related configuration
+MuonTag.IwsNPmtThreshold = 12;
+MuonTag.OwsNPmtThreshold = 12;
+
+MuonTag.tagRPCMuon = USERPC;
+MuonTag.tagADMuon  = FALSE;
+
+MuonTag.AdMuonThreshold = 100.; // MeV
+
+MuonTag.ShowerMuonThreshold = 2500.; // MeV
+
+AdEnergyTag.AdEnergyThreshold = 0.7; //MeV

@@ -1,0 +1,87 @@
+data path: /publicfs/dyb/data/userdata/dyboffline/liuyb/MuonSimulation/Dyb 
+
+message from liuyb:
+    trackLength和totalEnergyDep:
+    0->OWS, 1->IWS, 2->AD1-MO, 3->AD1-LS, 4->AD1-GdLS, 5->AD2-MO,
+    6->AD2->LS, 7->AD2->GdLS
+     
+     quenchedEnergyDep:
+     0->AD1-LS, 1->AD1-GdLS, 2->AD2-LS, 3->AD2-GdLS
+      
+      你可以根据/workfs/dyw/dyboffline/liuyb/Historian/src
+      /HistorianStepAction.cc中line 648-681检查一下我给出的是不是正确，以免出
+      现错误。
+
+tips:
+    0.每个root中，EventID从0开始。所以要单个单个root的运行。
+    1.有些root有问题,fn部分不能运行。已知情况：ColliNum和ColliEloss[]维数不对应，比如sim_010952.root 276，ColliNum=62，ColliEloss[]维数=21.
+    2.部分正常.root
+sim_010910.root
+sim_010912.root
+sim_010913.root
+sim_010914.root
+sim_010915.root
+sim_010916.root
+sim_010917.root
+sim_010918.root
+sim_010919.root
+sim_010930.root
+sim_010931.root
+sim_010932.root
+sim_010933.root
+sim_010934.root
+sim_010935.root
+sim_010936.root
+sim_010937.root
+sim_010938.root
+sim_010939.root
+sim_010940.root
+sim_010941.root
+sim_010942.root
+sim_010943.root
+sim_010944.root
+sim_010945.root
+sim_010946.root
+sim_010947.root
+sim_010948.root
+sim_010950.root
+sim_010951.root
+sim_010952.root
+sim_010953.root
+sim_010954.root
+sim_010955.root
+sim_010956.root
+sim_010957.root
+sim_010958.root
+sim_010959.root
+sim_010960.root
+sim_010961.root
+sim_010962.root
+sim_010963.root
+sim_010964.root
+sim_010965.root
+sim_010966.root
+sim_010967.root
+sim_010968.root
+sim_010969.root
+sim_010970.root
+sim_010971.root
+sim_010972.root
+sim_010973.root
+sim_010974.root
+sim_010975.root
+sim_010976.root
+sim_010977.root
+sim_010978.root
+sim_010979.root
+sim_010980.root
+sim_010981.root
+sim_010982.root
+sim_010983.root
+sim_010984.root
+sim_010985.root
+sim_010986.root
+sim_010987.root
+sim_010988.root
+sim_010989.root
+    
