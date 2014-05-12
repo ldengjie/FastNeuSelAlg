@@ -15,4 +15,5 @@
 - check `TimeShift/*.txt` for this data version
 > codes from XiaXin : `/publicfs/dyb/user/xiax/workarea/TimeShiftAlg`
 
+- no need to pay attention to LiveTimeSvc,it is not used in this project...
 
