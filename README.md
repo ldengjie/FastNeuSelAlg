@@ -1,6 +1,7 @@
 # How to run a new data version ?
 
 - modify `run/gen.sh`
+
     listPath="/dybfs/rec/P14A/minirec_GoodRun_v2"
     dataPath="/afs/ihep.ac.cn/users/l/lidj/largedata/FastNeuSel/P14A"
     logPath="/afs/ihep.ac.cn/users/l/lidj/largedata/FastNeuSel/P14A/log"
@@ -10,6 +11,7 @@
 
 - check `TimeShift/*.txt` for this data version
 > codes from XiaXin
-    /publicfs/dyb/user/xiax/workarea/TimeShiftAlg
+
+>    /publicfs/dyb/user/xiax/workarea/TimeShiftAlg
 
 
