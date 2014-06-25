@@ -20,7 +20,7 @@ void FastNeuAna::Begin(TTree * /*tree*/)
    c4num=0;
    c5num=0;
 
-   TString strfile = "/afs/ihep.ac.cn/users/l/lidj/file/FastNeuSelAlg/job/";
+   TString strfile = "/afs/ihep.ac.cn/users/l/lidj/file/FastNeuSelAlg/job/P14A/";
    strfile += option;
    strfile += "_AS_tA_1.5.root";
    m_file = new TFile(strfile, "recreate");
@@ -126,7 +126,7 @@ void FastNeuAna::Begin(TTree * /*tree*/)
             m_fnDEvsT2[i][j] = new TH2F(histname, "Dmpt Signal Position E&T",  60, 6.0, 12.0, 4000, -2000.0, 2000.0);
 
             histname=adname+"_PE_"+tagname;
-            m_fnPE[i][j] = new TH1F(histname, "Energy of Pmpt Signal",  100, 0,  100);
+            m_fnPE[i][j] = new TH1F(histname, "Energy of Pmpt Signal",  200, 0,  100);
             histname=adname+"_DE_"+tagname;
             m_fnDE[i][j] = new TH1F(histname, "Energy of Dayed Signal", 60, 6, 12);
             histname=adname+"_DE2_"+tagname;
@@ -252,21 +252,15 @@ Bool_t FastNeuAna::Process(Long64_t entry)
         {
             FillHist(mdet,3);//RR
             //c3 : 
-            if(((TMath::Abs(spallZ[mdet][1]/1000.)<1.62 && TMath::Sqrt(spallX[mdet][1]*spallX[mdet][1] + spallY[mdet][1]*spallY[mdet][1])/1000<1.62)/* && TMath::Abs(spallZ[mdet][0]/1000.)<2.0 && TMath::Sqrt(spallX[mdet][0]*spallX[mdet][0] + spallY[mdet][0]*spallY[mdet][0])/1000<2.0*/))
+                    if((spallFirstHitTime[mdet][1]+spallTrigNanoSec[mdet][1] - (FirstHitTime+TrigNanoSec))>6600)
             {
                 FillHist(mdet,5);//RRR
                 //c4 :
-                //if(/*(TMath::Abs(spallZ[mdet][1]/1000.)<1.5 && TMath::Sqrt(spallX[mdet][1]*spallX[mdet][1] + spallY[mdet][1]*spallY[mdet][1])/1000<1.5) &&*/ (spallFirstHitTime[mdet][1]+spallTrigNanoSec[mdet][1] - (FirstHitTime+TrigNanoSec))>8000)
-                if(((TMath::Abs(spallZ[mdet][1]/1000.)<1.5 && TMath::Sqrt(spallX[mdet][1]*spallX[mdet][1] + spallY[mdet][1]*spallY[mdet][1])/1000<1.5)/* && TMath::Abs(spallZ[mdet][0]/1000.)<2.0 && TMath::Sqrt(spallX[mdet][0]*spallX[mdet][0] + spallY[mdet][0]*spallY[mdet][0])/1000<2.0*/))
-                //if(spallTrigNanoSec[mdet][0]-TrigNanoSec>25)
-                //if(TMath::Sqrt((spallX[mdet][0] - spallX[mdet][1])*(spallX[mdet][0] - spallX[mdet][1])+(spallY[mdet][0] - spallY[mdet][1])*(spallY[mdet][0] - spallY[mdet][1]) +(spallZ[mdet][0] - spallZ[mdet][1])*(spallZ[mdet][0] - spallZ[mdet][1]))/1000.0<1.4)
+            if(((TMath::Abs(spallZ[mdet][1]/1000.)<1.5&& TMath::Sqrt(spallX[mdet][1]*spallX[mdet][1] + spallY[mdet][1]*spallY[mdet][1])/1000<1.5)/* && TMath::Abs(spallZ[mdet][0]/1000.)<2.0 && TMath::Sqrt(spallX[mdet][0]*spallX[mdet][0] + spallY[mdet][0]*spallY[mdet][0])/1000<2.0*/))
                 {
                     FillHist(mdet,7);//RRRR
                     //c5 :
-                    if((spallFirstHitTime[mdet][1]+spallTrigNanoSec[mdet][1] - (FirstHitTime+TrigNanoSec))>8000)
-                    //if((/*(TMath::Abs(spallZ[mdet][1]/1000.)<1.5 && TMath::Sqrt(spallX[mdet][1]*spallX[mdet][1] + spallY[mdet][1]*spallY[mdet][1])/1000<1.5) && */ TMath::Abs(spallZ[mdet][0]/1000.)<2.0 && TMath::Sqrt(spallX[mdet][0]*spallX[mdet][0] + spallY[mdet][0]*spallY[mdet][0])/1000<2.0))
-                    //if(TMath::Sqrt((spallX[mdet][0] - spallX[mdet][1])*(spallX[mdet][0] - spallX[mdet][1])+(spallY[mdet][0] - spallY[mdet][1])*(spallY[mdet][0] - spallY[mdet][1]) +(spallZ[mdet][0] - spallZ[mdet][1])*(spallZ[mdet][0] - spallZ[mdet][1]))/1000.0<1.4)
-                    //if((spallTrigNanoSec[mdet][1] - (TrigNanoSec))<100000)
+                if(((TMath::Abs(spallZ[mdet][1]/1000.)<1.38&& TMath::Sqrt(spallX[mdet][1]*spallX[mdet][1] + spallY[mdet][1]*spallY[mdet][1])/1000<1.38)/* && TMath::Abs(spallZ[mdet][0]/1000.)<2.0 && TMath::Sqrt(spallX[mdet][0]*spallX[mdet][0] + spallY[mdet][0]*spallY[mdet][0])/1000<2.0*/))
                     {
                         FillHist(mdet,9);//RRRRR
                     }else

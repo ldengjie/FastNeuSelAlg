@@ -1,4 +1,9 @@
+How run?
+./IntervalTime 12 //12 is the root file number ,<45000
+
 data path: /publicfs/dyb/data/userdata/dyboffline/liuyb/MuonSimulation/Dyb 
+script path: here 
+result path: MCdata/
 
 message from liuyb:
     trackLength和totalEnergyDep:
@@ -15,6 +20,7 @@ message from liuyb:
 tips:
     0.每个root中，EventID从0开始。所以要单个单个root的运行。
     1.有些root有问题,fn部分不能运行。已知情况：ColliNum和ColliEloss[]维数不对应，比如sim_010952.root 276，ColliNum=62，ColliEloss[]维数=21.
+      实际问题是：有的GenVolume为空，已跳过：L132 if(GenVolume->begin()==GenVolume->end()||ColliVolume->begin()==ColliVolume->end()) continue;
     2.部分正常.root
 sim_010910.root
 sim_010912.root

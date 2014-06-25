@@ -26,7 +26,7 @@ int AnaFastNeu(int siteNum)
   //chain->Add("/afs/ihep.ac.cn/users/l/lidj/largedata/FastNeuSel/EH1_AdMu_100/*_neutron.root");
   //chain->Add("/afs/ihep.ac.cn/users/l/lidj/largedata/FastNeuSel/EH1_6_12/*_neutron.root");
   string chainFile;
-  chainFile="/afs/ihep.ac.cn/users/l/lidj/largedata/FastNeuSel/";
+  chainFile="/afs/ihep.ac.cn/users/l/lidj/largedata/FastNeuSel/P14A/";
   chainFile+=site;
   chainFile+="_AS_TimeAlign/*_neutron.root";
   //chain->Add("/afs/ihep.ac.cn/users/l/lidj/largedata/FastNeuSel/EH1_AS_TimeAlign/*_neutron.root");
