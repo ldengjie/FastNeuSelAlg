@@ -7,6 +7,161 @@
 #include  <math.h>
 using namespace std;
 
+typedef struct event
+{
+    int EventID;
+    float x;
+    float y;
+    float z;
+    float dE;
+    float quenchedDepE;
+    float time;
+    int det;
+}Event;
+
+vector<Event> eventBuf;
+
+//IWS AD1 AD2
+int inwhere(float x,float y,float z)
+{
+    if( x<2500&&x>-2500&&y<2500&&y>-2500&&z<2500&&z>-2500 )
+    {
+        return 1;
+    }else if( x<-3500&&x>-8500&&y<2500&&y>-2500&&z<2500&&z>-2500 )
+    {
+        return 2;
+    }else
+    {
+        return 5;
+    }
+}
+Event dumpEvent(int EventID,float x,float y,float z,float dE,float quenchedDepE,float time,int det)
+{
+    Event eventTmp;
+    eventTmp.EventID=EventID;
+    eventTmp.x=x;
+    eventTmp.y=y;
+    eventTmp.z=z;
+    eventTmp.dE=dE;
+    eventTmp.quenchedDepE=quenchedDepE;
+    eventTmp.time=time;
+    eventTmp.det=det;
+    return eventTmp;
+}
+bool printEvt(Event evt)
+{
+    cout<<"    EventID  : "<<evt.EventID<<endl;
+    cout<<"    x  : "<<evt.x<<" mm"<<endl;
+    cout<<"    y  : "<<evt.y<<" mm"<<endl;
+    cout<<"    z  : "<<evt.z<<" mm"<<endl;
+    cout<<"    dE  : "<<evt.dE<<" MeV"<<endl;
+    cout<<"    quenchedDepE  : "<<evt.quenchedDepE<<" MeV"<<endl;
+    cout<<"    time  : @"<<evt.time<<" us"<<endl;
+    TString detStr="AD";
+    if( evt.det==5 )
+    {
+        detStr="IWS";
+    }else
+    {
+        detStr+=evt.det;
+    }
+    cout<<"    det  : "<<evt.det<<" ["<<detStr<<"]"<<endl;
+    return 1;
+}
+bool dump(vector<Event> adBuf)
+{
+    cout<<"here is dump() size="<<adBuf.size()<<endl;
+    if( adBuf.size()==2 )
+    {
+        if( adBuf[0].quenchedDepE<200.&&adBuf[0].quenchedDepE>0.7&&adBuf[1].quenchedDepE<12.&&adBuf[1].quenchedDepE>6. )
+        {
+            cout<<">>>Find one fast neutron "<<endl;
+        }
+    }
+    return true;
+
+}
+
+int muonNum;
+bool selectFn()
+{
+    muonNum++;
+    //cout<<"here is selectFn() "<<endl;
+    bool canThroughOneAd=0;
+    bool throughThisAd[2]={0};
+    if( eventBuf.size()>=3 )
+    {
+        vector<Event> adEventBuf[2];
+    cout<<"========= muonID: "<<muonNum<<" event size:"<<eventBuf.size()<<" ========="<<endl;
+        float muonInitTime=eventBuf[0].time;
+        //cout<<">>>eventBuf[0].det ="<<eventBuf[0].det<<endl;
+        //if(eventBuf[0].det!=5) 
+        //{
+        //cout<<">>>eventBuf[0].det!=5 ="<<eventBuf[0].det<<endl;
+        //}
+            cout<<" [0] ("<<eventBuf[0].det <<") "<<eventBuf[0].dE<<"->"<<eventBuf[0].quenchedDepE<<"MeV"<<"  to init "<<(eventBuf[0].time)*1000<<"ns"<<endl;
+        for( unsigned int i=1 ; i<eventBuf.size() ; i++ )
+        {
+            Event _evt=eventBuf[i];
+            cout<<" ["<<i<<"] ("<<_evt.det <<") "<<_evt.dE<<"->"<<_evt.quenchedDepE<<"MeV"<<"  to ["<<i-1 <<"] "<<(_evt.time-eventBuf[i-1].time)*1000<<"ns"<<endl;
+            //printEvt(_evt);
+            //1)
+            if(_evt.quenchedDepE<0.7) continue;
+            //2)AD muon
+            if(_evt.quenchedDepE>200&&_evt.det<5&&(_evt.time-muonInitTime)<2)
+            {
+                if( canThroughOneAd )
+                {
+                    throughThisAd[_evt.det-1]=1;
+
+                }else
+                {
+                    eventBuf.clear();
+                    return false; 
+                }
+            } 
+            //only loop AD events
+            if(_evt.det>4) continue;
+            if( !throughThisAd[_evt.det-1] )
+            {
+                //3)
+                if( _evt.time-muonInitTime <400)
+                {
+                    if( adEventBuf[_evt.det-1].size()!=0 )
+                    {
+                        //4)
+                        if( _evt.time-adEventBuf[_evt.det-1][adEventBuf[_evt.det-1].size()-1].time>200 )
+                        {
+                            //select fn
+                            dump(adEventBuf[_evt.det-1]);
+                            adEventBuf[_evt.det-1].clear();
+                        }
+                    }
+                    adEventBuf[_evt.det-1].push_back(_evt);
+
+                }else
+                {
+                    break;
+                }
+
+            }
+
+        }
+        //select fn
+        for( int i=0 ; i<2 ; i++ )
+        {
+            if( !throughThisAd[i] )
+            {
+                dump(adEventBuf[i]);
+                adEventBuf[i].clear();
+            }
+        }
+
+
+    }
+    eventBuf.clear();
+    return true;
+}
 int main(int argc,char* args[])
 {
     if(argc!=2) 
@@ -18,10 +173,10 @@ int main(int argc,char* args[])
     cout<<"rootNum : "<<rootNum<<endl;
     int anaStopMuon=0;
     int anaMichelElectron=0;
-    int anaFn=1;
+    int anaFn=0;
+    int anaSpa=1;
 
     float muonMass=105.65;//MeV
-    int totalnum=0;
     int number=0;
 
     TH1F* h = new TH1F("stopMuonIntervalTime","stopMuonIntervalTime",400,0,400);
@@ -85,9 +240,24 @@ int main(int argc,char* args[])
             std::cout<<"not exist "<<endl;
         }else
         {
-            TTree* t= (TTree*)f->Get("Neutron");
-            int tnum=t->GetEntries();
-            totalnum+=t->GetEntries();
+            TTree* st=(TTree*)f->Get("Spallation");
+            int stnum=st->GetEntries();
+            int sEventID;
+            float sx;
+            float sy;
+            float sz;
+            float sdE;
+            float stime;
+            float squenchedDepE;
+            st->SetBranchAddress("EventID",&sEventID);
+            st->SetBranchAddress("x",&sx);
+            st->SetBranchAddress("y",&sy);
+            st->SetBranchAddress("z",&sz);
+            st->SetBranchAddress("dE",&sdE);
+            st->SetBranchAddress("time",&stime);
+            st->SetBranchAddress("quenchedDepE",&squenchedDepE);
+
+
             TTree* et= (TTree*)f->Get("MichelElectron");
             int etnum=et->GetEntries();
             Int_t eEventID;
@@ -97,7 +267,6 @@ int main(int argc,char* args[])
 
             TTree* mt= (TTree*)f->Get("Muon");
             int mtnum=mt->GetEntries();
-
             float muonInitTime;
             Int_t muonEventID;
             float muonTrackLength[100];
@@ -107,6 +276,8 @@ int main(int argc,char* args[])
             mt->SetBranchAddress("InitKineE",&muonInitKineE);
             mt->SetBranchAddress("TrackLength",muonTrackLength);
 
+            TTree* t= (TTree*)f->Get("Neutron");
+            int tnum=t->GetEntries();
             Int_t nNum=0;
             float intervalTime;
             vector<TString>* GenVolume = 0;
@@ -153,6 +324,61 @@ int main(int argc,char* args[])
             t->SetBranchAddress("InitLocalX",&InitLocalX);
             t->SetBranchAddress("InitLocalY",&InitLocalY);
             t->SetBranchAddress("InitLocalZ",&InitLocalZ);
+            //%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            //Spallation
+
+            if( anaSpa )
+            {
+                //event constructor
+                int _eventID=0;
+                float _x=0.;
+                float _y=0.;
+                float _z=0.;
+                float _dE=0.;
+                float _quenchedDepE=0.;
+                float _time=0.;
+                float _relTime=0.;
+                int _det=999;
+
+                for( int i=0 ; i<stnum ; i++ )
+                {
+                    st->GetEntry(i);
+                    int detTmp=inwhere(sx,sy,sz);
+                    //new event ,including "new muon"
+                    if(  _eventID!=0&&(sEventID!=_eventID|| stime*1000>100 || (_det!=detTmp&&_det!=999)))
+                    {
+                        Event eventTmp=dumpEvent(_eventID,_x,_y,_z,_dE,_quenchedDepE,_time,_det);
+                        eventBuf.push_back(eventTmp);
+                        _x=0.;
+                        _y=0.;
+                        _z=0.;
+                        _dE=0.;
+                        _quenchedDepE=0.;
+                    }
+                    //new muon
+                    if(sEventID!=_eventID )
+                    {
+                        //select fn from eventBuf
+                        selectFn();
+                        _relTime=0.;
+                    }
+                    _relTime+=stime;
+                    if( _x==0. )
+                    {
+                        _time=_relTime; 
+                    }
+                    _eventID=sEventID;
+                    _x+=sx;
+                    _y+=sy;
+                    _z+=sz;
+                    _dE+=sdE;
+                    _quenchedDepE+=squenchedDepE;
+                    _det=detTmp;
+
+                }
+
+            }
+            //%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             //%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             //MichelElectron 
             if( anaMichelElectron )
@@ -322,7 +548,6 @@ int main(int argc,char* args[])
                 }
                 muonIndex.clear();
             }
-            //*/
 
             //%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             //stopmuon
@@ -359,56 +584,55 @@ int main(int argc,char* args[])
 
         }
         f->Close();
-        //}
+    }
 
-}
-// h->Draw();
-//h2->Draw();
-//h3->Draw();
-TFile* fr=new TFile(Form("MCdata/result_%d.root",rootNum),"RECREATE");
-fr->cd();
+        // h->Draw();
+        //h2->Draw();
+        //h3->Draw();
+        TFile* fr=new TFile(Form("MCdata/result_%d.root",rootNum),"RECREATE");
+        fr->cd();
 
-timeIntervalGd->Write();
-timeIntervalvsInitEGd->Write();
-fnPElessGd->Write();
-fnPEmoreGd->Write();
-fnPEGd->Write();
-fnInitEGd->Write();
-PEvsInitEGd->Write();
-PEvstimeIntervalGd->Write();
-PEvsRGd->Write();
-PEvsZGd->Write();
-fnPEtoyGd->Write();
-PEvsPosTagGd->Write();
-PEwithThroughLSGd->Write();
-PEwithThroughGDGd->Write();
-fnInitEtoyGd->Write();
+        timeIntervalGd->Write();
+        timeIntervalvsInitEGd->Write();
+        fnPElessGd->Write();
+        fnPEmoreGd->Write();
+        fnPEGd->Write();
+        fnInitEGd->Write();
+        PEvsInitEGd->Write();
+        PEvstimeIntervalGd->Write();
+        PEvsRGd->Write();
+        PEvsZGd->Write();
+        fnPEtoyGd->Write();
+        PEvsPosTagGd->Write();
+        PEwithThroughLSGd->Write();
+        PEwithThroughGDGd->Write();
+        fnInitEtoyGd->Write();
 
-timeIntervalH->Write();
-timeIntervalvsInitEH->Write();
-fnPElessH->Write();
-fnPEmoreH->Write();
-fnPEH->Write();
-fnInitEH->Write();
-PEvsInitEH->Write();
-PEvstimeIntervalH->Write();
-PEvsRH->Write();
-PEvsZH->Write();
-fnPEtoyH->Write();
-PEvsPosTagH->Write();
-PEwithThroughLSH->Write();
-PEwithThroughGDH->Write();
-fnInitEtoyH->Write();
+        timeIntervalH->Write();
+        timeIntervalvsInitEH->Write();
+        fnPElessH->Write();
+        fnPEmoreH->Write();
+        fnPEH->Write();
+        fnInitEH->Write();
+        PEvsInitEH->Write();
+        PEvstimeIntervalH->Write();
+        PEvsRH->Write();
+        PEvsZH->Write();
+        fnPEtoyH->Write();
+        PEvsPosTagH->Write();
+        PEwithThroughLSH->Write();
+        PEwithThroughGDH->Write();
+        fnInitEtoyH->Write();
 
-fnPEtotal->Write();
-fnPEtoytotal->Write();
-posInterval->Write();
-EbeforeLS->Write();
-ELossbeforeLS->Write();
-timeIntervalAllfn->Write();
-timeIntervalAllfnvsInitE->Write();
-fnInitE->Write();
+        fnPEtotal->Write();
+        fnPEtoytotal->Write();
+        posInterval->Write();
+        EbeforeLS->Write();
+        ELossbeforeLS->Write();
+        timeIntervalAllfn->Write();
+        timeIntervalAllfnvsInitE->Write();
+        fnInitE->Write();
 
-fr->Close();
+        fr->Close();
 
 }

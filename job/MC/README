@@ -1,5 +1,5 @@
 How run?
-./IntervalTime 12 //12 is the root file number ,<45000
+./IntervalTime 12 //12 is the root file number ,should better <45000
 
 data path: /publicfs/dyb/data/userdata/dyboffline/liuyb/MuonSimulation/Dyb 
 script path: here 
