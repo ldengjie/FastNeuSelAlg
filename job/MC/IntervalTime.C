@@ -50,7 +50,7 @@ bool dump(vector<Event> adBuf)
     {
         if( adBuf[0].quenchedDepE<200.&&adBuf[0].quenchedDepE>0.7&&adBuf[1].quenchedDepE<12.&&adBuf[1].quenchedDepE>6. )
         {
-            cout<<">>>Find one fast neutron pE:"<<adBuf[0].quenchedDepE<<" dE:"<<adBuf[1].quenchedDepE<<" PT2Muon:"<<adBuf[0].time*1000<<"ns"<<endl;
+            //cout<<">>>Find one fast neutron pE:"<<adBuf[0].quenchedDepE<<" dE:"<<adBuf[1].quenchedDepE<<" PT2Muon:"<<adBuf[0].time*1000<<"ns"<<endl;
             for( int i=0 ; i<2;i++ )
             {
                 mp_spallScaledE[i]=adBuf[i].quenchedDepE;
