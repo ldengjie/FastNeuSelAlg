@@ -14,8 +14,7 @@ message from liuyb:
      quenchedEnergyDep:
      0->AD1-LS, 1->AD1-GdLS, 2->AD2-LS, 3->AD2-GdLS
       
-      你可以根据/workfs/dyw/dyboffline/liuyb/Historian/src
-      /HistorianStepAction.cc中line 648-681检查一下我给出的是不是正确，以免出
+      你可以根据/workfs/dyw/dyboffline/liuyb/Historian/src/HistorianStepAction.cc中line 648-681检查一下我给出的是不是正确，以免出
       现错误。
 
 tips:

@@ -48,31 +48,9 @@ bool dump(vector<Event> adBuf)
     //cout<<"here is dump() size="<<adBuf.size()<<endl;
     if( adBuf.size()==2 )
     {
-        if( adBuf[0].quenchedDepE<200.&&adBuf[0].quenchedDepE>0.7&&adBuf[1].quenchedDepE<12.&&adBuf[1].quenchedDepE>6. )
+        if( adBuf[0].quenchedDepE<200.&&adBuf[0].quenchedDepE>0.7&&adBuf[1].quenchedDepE<12.&&adBuf[1].quenchedDepE>6.&&(adBuf[1].time-adBuf[0].time>1) )
         {
-            //cout<<">>>Find one fast neutron pE:"<<adBuf[0].quenchedDepE<<" dE:"<<adBuf[1].quenchedDepE<<" PT2Muon:"<<adBuf[0].time*1000<<"ns"<<endl;
-            for( int i=0 ; i<2;i++ )
-            {
-                mp_spallScaledE[i]=adBuf[i].quenchedDepE;
-                mp_spallTrigNanoSec[i]=(int)(adBuf[i].time*1000);
-                mp_spallX[i]=adBuf[i].x+6000*(adBuf[0].det-1);
-                mp_spallY[i]=adBuf[i].y;
-                mp_spallZ[i]=adBuf[i].z;
-                mp_spallDetId[i]=adBuf[i].det;
-                //tag for event.
-                mp_spallNPmt[i]=adBuf[i].EventID;
-                //printEvt(adBuf[i]);
-                //cout<<"mp_spallX["<<i<<"]  : "<<mp_spallX[i]<<endl;
-                //cout<<"mp_spallY["<<i<<"]  : "<<mp_spallY[i]<<endl;
-                //cout<<"mp_spallZ["<<i<<"]  : "<<mp_spallZ[i]<<endl;
-                //cout<<"mp_spallScaledE["<<i<<"]  : "<<mp_spallScaledE[i]<<endl;
-                //cout<<"mp_spallTrigNanoSec["<<i<<"]  : "<<mp_spallTrigNanoSec[i]<<endl;
-                //cout<<"mp_spallDetId["<<i<<"]  : "<<mp_spallDetId[i]<<endl;
-                //cout<<"mp_spallNPmt["<<i<<"]  : "<<mp_spallNPmt[i]<<endl;
-            }
-            //cout<<"1 "<<endl;
-            fnTree->Fill();
-            //cout<<"2 "<<endl;
+            fnPair.push_back(make_pair(adBuf[0],adBuf[1]));
         }
     }
     return true;
@@ -88,12 +66,9 @@ bool selectFn()
     if( eventBuf.size()>=2 )
     {
         vector<Event> adEventBuf[2];
-        //cout<<"========= muonID: "<<muonNum<<" event size:"<<eventBuf.size()<<" ========="<<endl;
         for( unsigned int i=0 ; i<eventBuf.size() ; i++ )
         {
             Event _evt=eventBuf[i];
-            //cout<<" ["<<i<<"] ("<<_evt.det <<" x:"<<_evt.x<<") "<<_evt.dE<<"->"<<_evt.quenchedDepE<<"MeV"<<" to ["<<i-1 <<"] "<<(_evt.time-eventBuf[i-1].time)*1000<<"ns"<<endl;
-            //printEvt(_evt);
             //1)
             if(_evt.quenchedDepE<0.7) continue;
             //2)AD muon
@@ -113,12 +88,12 @@ bool selectFn()
             if(_evt.det>4) continue;
             if( !throughThisAd[_evt.det-1] )
             {
-                //3)
+                //3) muon cut <400us
                 if( _evt.time<400)
                 {
                     if( adEventBuf[_evt.det-1].size()!=0 )
                     {
-                        //4)
+                        //4)timeInterval>200us
                         if( _evt.time-adEventBuf[_evt.det-1][adEventBuf[_evt.det-1].size()-1].time>200 )
                         {
                             //select fn
@@ -295,7 +270,6 @@ int main(int argc,char* args[])
     {
 
         TString nameStr=Form("/publicfs/dyb/data/userdata/dyboffline/liuyb/MuonSimulation/Dyb/sim_%06d.root",i);
-        //cout<<"nameStr  : "<<nameStr<<endl;
         if( i%100==0 )
         {
             std::cout<<"filename : "<<nameStr<<endl;
@@ -326,9 +300,13 @@ int main(int argc,char* args[])
             TTree* et= (TTree*)f->Get("MichelElectron");
             int etnum=et->GetEntries();
             Int_t eEventID;
+            float eKineE;
+            float eMichelLocalTime;
             vector<TString>* eVolume = 0;
             et->SetBranchAddress("EventID",&eEventID);
             et->SetBranchAddress("VolName",&eVolume);
+            et->SetBranchAddress("KineE",&eKineE);
+            et->SetBranchAddress("MichelLocalTime",&eMichelLocalTime);
 
             TTree* mt= (TTree*)f->Get("Muon");
             int mtnum=mt->GetEntries();
@@ -336,10 +314,13 @@ int main(int argc,char* args[])
             Int_t muonEventID;
             float muonTrackLength[100];
             float muonInitKineE;
+            float muonQuenchedTotalEnergyDep[100];
             mt->SetBranchAddress("InitTime",&muonInitTime);
             mt->SetBranchAddress("EventID",&muonEventID);
             mt->SetBranchAddress("InitKineE",&muonInitKineE);
             mt->SetBranchAddress("TrackLength",muonTrackLength);
+            mt->SetBranchAddress("QuenchedTotalEnergyDep",muonQuenchedTotalEnergyDep);
+            //mt->SetBranchAddress("NumOfNeutron",&NumOfNeutron);
 
             TTree* t= (TTree*)f->Get("Neutron");
             int tnum=t->GetEntries();
@@ -389,6 +370,13 @@ int main(int argc,char* args[])
             t->SetBranchAddress("InitLocalX",&InitLocalX);
             t->SetBranchAddress("InitLocalY",&InitLocalY);
             t->SetBranchAddress("InitLocalZ",&InitLocalZ);
+
+            map<int,int> muonIndex;
+            for( int u=0 ; u<mtnum ; u++ )
+            {
+                mt->GetEntry(u);
+                muonIndex.insert(std::pair<int,int>(muonEventID,u));
+            }
             //Spallation
             if( anaSpa )
             {
@@ -419,7 +407,255 @@ int main(int argc,char* args[])
                     if(sEventID!=_eventID )
                     {
                         //select fn from eventBuf
+                        fnPair.clear();
                         selectFn();
+                        if( !fnPair.empty() )
+                        {
+                            for( unsigned int k=0 ; k<fnPair.size() ; k++ )
+                            {
+                                bool isMichelEletron=true;
+                                int eventTag=5; //fn:1 DoubleNeutron:2 MichelEletron:3 CornerMuon:4 other:5
+                                float eventFirstHitTime=0.;//us
+                                //float minCapTime=0.;
+                                //printEvt(fnPair[k].first);
+                                //printEvt(fnPair[k].second);
+                                mt->GetEntry(muonIndex[fnPair[k].first.EventID]);
+                                int NumOfNeutron=0;
+                                vector<Event> mcNeutronList;
+                                vector<Event> mcMichelElectronList;
+                                    for( int o=0 ; o<etnum ; o++ )
+                                    {
+                                        et->GetEntry(o);
+                                        if(eEventID==muonEventID  )
+                                        {
+                                            //cout<<"find one MichelEletron "<<endl;
+                                            Event mcMichelElectronEvt;
+                                            mcMichelElectronEvt.dE=eKineE;
+                                            mcMichelElectronEvt.time=eMichelLocalTime;//us
+                                            mcMichelElectronEvt.pos=(*eVolume)[0];
+                                            mcMichelElectronList.push_back(mcMichelElectronEvt);
+                                        }
+                                        
+                                    }
+                                    for( int r=0 ; r<tnum ; r++ )
+                                    {
+                                        t->GetEntry(r);
+                                        if( CapGammaESum>0 &&muonEventID==EventID/*&&(*CapVolumeName)[0]!="MO"*/ )
+                                        {
+                                            NumOfNeutron++;
+                                            Event mcNeutronEvt;
+                                            mcNeutronEvt.dE=CapGammaESum;
+                                            mcNeutronEvt.time=CapTime;//us
+                                            mcNeutronEvt.pos=(*CapVolumeName)[0];
+                                            //mcNeutronEvt.pos=(*CapTargetName)[0];
+                                            mcNeutronList.push_back(mcNeutronEvt);
+                                        }
+                                        
+                                    }
+                                int nCapNum=0;
+                                
+                                if( NumOfNeutron>0 )
+                                {
+                                    float pFTfromDN=0.;//first hit time of prompt signal that from this Delayed Signal Neutron
+                                    float pEfromDN=0.;//energy of prompt signal that from this Delayed Signal Neutron
+                                    float pEfromAN=0.;//energy of prompt signal that from all Neutron
+                                    for( int r=0 ; r<tnum ; r++ )
+                                    {
+                                        t->GetEntry(r);
+                                        if( muonEventID==EventID )
+                                        {
+                                            if( CapGammaESum>0 )
+                                            {
+                                                nCapNum++;
+                                                //if( minCapTime==0. )
+                                                //{
+                                                //minCapTime=CapTime;
+                                                //}else
+                                                //{
+                                                //minCapTime=minCapTime>CapTime?CapTime:minCapTime;
+                                                //}
+                                                //if( (*CapTargetName)[0]=="/dd/Materials/Gd_157"||(*CapTargetName)[0]=="/dd/Materials/Gd_155"||(*CapVolumeName)[0]=="SST")
+                                                //if(1)
+                                                //{
+                                                for( int s=0 ; s<ColliNum ; s++ )
+                                                {
+                                                    //find delayed signal
+                                                    if( ((*CapTargetName)[0]=="/dd/Materials/Gd_157"||(*CapTargetName)[0]=="/dd/Materials/Gd_155"||(*CapVolumeName)[0]=="SST")&&(fnPair[k].second.time-CapTime<5))
+                                                    {
+                                                        isMichelEletron=false;
+                                                        //get first hit time caused by this neutron
+                                                        if((*ColliVolume)[s]=="LS" ||(*ColliVolume)[s]=="GD") 
+                                                        {
+                                                            if( pFTfromDN==0. )
+                                                            {
+                                                                pFTfromDN=ColliTime[s];
+                                                            }else
+                                                            {
+                                                                pFTfromDN=pFTfromDN>ColliTime[s]?ColliTime[s]:pFTfromDN;
+                                                            }
+                                                            pEfromDN+=ColliEloss[s];
+                                                        }
+                                                        if(muonTrackLength[3*fnPair[k].first.det-1]>0.)
+                                                        {
+                                                            eventTag=4;
+                                                            //eventFirstHitTime=(muonTrackLength[0]+muonTrackLength[1]+muonTrackLength[3*fnPair[k].first.det-1])/1000/(0.3*sqrt(1-1/((muonInitKineE/muonMass)*(muonInitKineE/muonMass))))/1000;
+                                                            eventFirstHitTime=(muonTrackLength[0]+muonTrackLength[1])/1000/(0.3*sqrt(1-1/((muonInitKineE/muonMass)*(muonInitKineE/muonMass))))/1000;
+                                                        }
+
+                                                    }
+                                                }
+                                                    //if(muonQuenchedTotalEnergyDep[(fnPair[k].first.det-1)*2]+muonQuenchedTotalEnergyDep[1+(fnPair[k].first.det-1)*2]>0. )
+                                                    //{
+                                                        double eventFirstHitTimeThisNeutron=0.;
+                                                        //cout<<"... [InitE:"<<InitKineE <<"MeV CapedBy:"<<(*CapTargetName)[0] <<"] "<<"ColliVolume";
+                                                        for( int s=0 ; s<ColliNum ; s++ )
+                                                        {
+                                                            //cout<<" ["<<s<<"/"<<ColliNum<<"]:"<<(*ColliVolume)[s]<<","<<ColliEloss[s]<<"MeV,"<<ColliTime[s]*1000<<"ns";
+                                                            if((*ColliVolume)[s]=="LS" ||(*ColliVolume)[s]=="GD") 
+                                                            {
+                                                                if( eventFirstHitTime==0. )
+                                                                {
+                                                                    eventFirstHitTime=ColliTime[s];
+                                                                }else
+                                                                {
+                                                                    eventFirstHitTime=eventFirstHitTime>ColliTime[s]?ColliTime[s]:eventFirstHitTime;
+                                                                }
+                                                                if( eventFirstHitTimeThisNeutron==0. )
+                                                                {
+                                                                    eventFirstHitTimeThisNeutron=ColliTime[s];
+                                                                }else
+                                                                {
+                                                                    eventFirstHitTimeThisNeutron=eventFirstHitTimeThisNeutron>ColliTime[s]?ColliTime[s]:eventFirstHitTimeThisNeutron;
+                                                                }
+                                                                pEfromAN+=ColliEloss[s];
+                                                            }
+                                                        }
+                                                        //cout<<endl;
+                                                        ////cout<<"  >>eventFirstHitTime  : "<<eventFirstHitTime*1000<<endl;
+                                                        //cout<<"  >>eventFirstHitTime  : "<<eventFirstHitTimeThisNeutron*1000<<endl;
+                                                        //}
+                                                    //}
+                                            }
+                                        }
+                                    }
+                                    if( eventTag!=4 )//this muon doesn't pass through AD
+                                    {
+                                        if( pEfromDN!=0.&&pFTfromDN!=0. )//delayed signal is neutron
+                                        {
+                                            if( pEfromAN==pEfromDN&&pFTfromDN==eventFirstHitTime )//prompt and delayed signal from the same neutron
+                                            {
+                                                eventTag=1;
+                                            }else if(eventFirstHitTime!=0.&&eventFirstHitTime<fnPair[k].first.time)
+                                            {
+                                                eventTag=2;
+                                            }
+                                            //eventFirstHitTime=minCapTime;
+                                        }
+                                    }
+                                }
+                                if( isMichelEletron&&eventTag==5 )
+                                {
+                                    for( int o=0 ; o<etnum ; o++ )
+                                    {
+                                        et->GetEntry(o);
+                                        if(eEventID==muonEventID  )
+                                        {
+                                            eventTag=3;
+                                            //eventFirstHitTime=(muonTrackLength[0]+muonTrackLength[1]+muonTrackLength[3*fnPair[k].first.det-1]+muonTrackLength[3*fnPair[k].first.det]+muonTrackLength[3*fnPair[k].first.det+1])/1000/(0.3*sqrt(1-1/((muonInitKineE/muonMass)*(muonInitKineE/muonMass))))/1000;
+                                            eventFirstHitTime=(muonTrackLength[0]+muonTrackLength[1])/1000/(0.3*sqrt(1-1/((muonInitKineE/muonMass)*(muonInitKineE/muonMass))))/1000;
+                                            break;
+                                        }
+                                    }
+                                }
+                                //tag=5,(1)i don't where is the prompt signal from,and delayed signal is from neutron captured on GD or SST.(2)MichelEletron
+                                fnPair[k].first.tag=eventTag;
+                                fnPair[k].first.firstHitTime=eventFirstHitTime*1000;
+                                mp_spallScaledE[0]=fnPair[k].first.quenchedDepE;
+                                mp_spallEnergy[0]=fnPair[k].first.dE;
+                                mp_spallTrigNanoSec[0]=(int)(fnPair[k].first.time*1000);
+                                mp_spallX[0]=fnPair[k].first.x+6000*(fnPair[k].first.det-1);
+                                mp_spallY[0]=fnPair[k].first.y;
+                                mp_spallZ[0]=fnPair[k].first.z;
+                                mp_spallDetId[0]=fnPair[k].first.det;
+                                //tag for event.
+                                mp_spallNPmt[0]=fnPair[k].first.tag;
+                                mp_spallMaxQ[0]=muonInitKineE;
+                                mp_spallFirstHitTime[0]=fnPair[k].first.firstHitTime;
+
+                                mp_spallScaledE[1]=fnPair[k].second.quenchedDepE;
+                                mp_spallEnergy[1]=fnPair[k].first.dE;
+                                mp_spallTrigNanoSec[1]=(int)(fnPair[k].second.time*1000);
+                                mp_spallX[1]=fnPair[k].second.x+6000*(fnPair[k].second.det-1);
+                                mp_spallY[1]=fnPair[k].second.y;
+                                mp_spallZ[1]=fnPair[k].second.z;
+                                mp_spallDetId[1]=fnPair[k].second.det;
+                                fnTree->Fill();
+
+                                eventFirstHitTime=0.;
+                                eventTag=5;
+                                mp_spallScaledE[0]=0.;
+                                mp_spallEnergy[0]=0.;
+                                mp_spallTrigNanoSec[0]=0;
+                                mp_spallX[0]=0.;
+                                mp_spallY[0]=0.;
+                                mp_spallZ[0]=0.;
+                                mp_spallDetId[0]=0;
+                                //tag for event.
+                                mp_spallNPmt[0]=0;
+                                mp_spallMaxQ[0]=0.;
+                                mp_spallFirstHitTime[0]=0.;
+
+                                mp_spallScaledE[1]=0.;
+                                mp_spallEnergy[1]=0.;
+                                mp_spallTrigNanoSec[1]=0.;
+                                mp_spallX[1]=0.;
+                                mp_spallY[1]=0.;
+                                mp_spallZ[1]=0.;
+                                mp_spallDetId[1]=0;
+
+                                //cout<<"["<<fnPair[k].first.tag <<" "<<muonEventID <<" "<< fnPair[k].first.quenchedDepE<<"("<<fnPair[k].first.time*1000 <<"ns),"<<fnPair[k].second.quenchedDepE<<"("<<fnPair[k].second.time <<"us)] ";
+                                //cout<<Form("[tag=%d det=%d evtID=%5d %3.2f->%3.2fMeV(%4.2fns->%4.2fns) %2.2f->%2.2fMeV(*us->%3.2fus)]",fnPair[k].first.tag,fnPair[k].first.det,muonEventID,fnPair[k].first.dE,fnPair[k].first.quenchedDepE,fnPair[k].first.firstHitTime*1000,fnPair[k].first.time*1000,fnPair[k].second.dE,fnPair[k].second.quenchedDepE,fnPair[k].second.time);
+
+                                //float muonFT=(muonTrackLength[0]+muonTrackLength[1]+muonTrackLength[3*fnPair[k].first.det-1])/1000/(0.3*sqrt(1-1/((muonInitKineE/muonMass)*(muonInitKineE/muonMass))))/1000;
+                                float muonFT=(muonTrackLength[0]+muonTrackLength[1])/1000/(0.3*sqrt(1-1/((muonInitKineE/muonMass)*(muonInitKineE/muonMass))))/1000;
+                                float muonFT2=(muonTrackLength[2])/1000/(0.3*sqrt(1-1/((muonInitKineE/muonMass)*(muonInitKineE/muonMass))))/1000;
+                                float muonFT3=(muonTrackLength[5])/1000/(0.3*sqrt(1-1/((muonInitKineE/muonMass)*(muonInitKineE/muonMass))))/1000;
+                                //float muonQE=muonQuenchedTotalEnergyDep[(fnPair[k].first.det-1)*2]+muonQuenchedTotalEnergyDep[1+(fnPair[k].first.det-1)*2];
+                                float muonQE=muonQuenchedTotalEnergyDep[0]+muonQuenchedTotalEnergyDep[1];
+                                float muonQE2=muonQuenchedTotalEnergyDep[2]+muonQuenchedTotalEnergyDep[3];
+                                //cout<<endl;
+                                //cout<<Form("    mu(InitE:%3.2fMeV ad1:%3.8fMeV ad2:%3.8fMeV ws:%4.2fns mo1:%4.2fns mo2:%4.2fns)",muonInitKineE,muonQE,muonQE2,muonFT*1000,muonFT2*1000,muonFT3*1000);
+
+                                int eNum=mcMichelElectronList.size();
+                                float eE=0.;
+                                float eT=0.;
+                                string eP;
+                                    for( int n=0 ; n<eNum ; n++ )
+                                {
+                                    eE=mcMichelElectronList[n].dE;
+                                    eT=mcMichelElectronList[n].time;
+                                    eP=mcMichelElectronList[n].pos;
+                                    //cout<<Form(" e(%3.8fMeV %4.2fus %3s)",eE,eT,eP.c_str());
+                                }
+                                int nNum=mcNeutronList.size();
+                                float nE=0.;
+                                float nT=0.;
+                                string nP;
+                                for( int n=0 ; n<nNum ; n++ )
+                                {
+                                    nE=mcNeutronList[n].dE;
+                                    nT=mcNeutronList[n].time;
+                                    nP=mcNeutronList[n].pos;
+                                    //cout<<Form(" n(%3.2fMeV %4.2fus %3s)",nE,nT,nP.c_str());
+                                }
+                                
+                                //cout<<endl;
+                                //cout<<endl;
+                                mcNeutronList.clear();
+                                mcMichelElectronList.clear();
+                            }
+
+                        }
                         _relTime=0.;
                     }
                     _relTime+=stime;
@@ -445,22 +681,25 @@ int main(int argc,char* args[])
                 {
                     et->GetEntry(o);
                     if(!((*eVolume)[0]=="GD" || (*eVolume)[0]=="LS" ||(*eVolume)[0]=="MO")) continue;
-                    //std::cout<<"o : "<<o<<endl;
                     for( int p=0 ; p<mtnum ; p++ )
                     {
                         mt->GetEntry(p);
                         float eMuonLength=0;
                         float eMuonIntervalTime=0;
+
                         if( muonEventID==eEventID )
                         { 
+                            /*
                             if( muonTrackLength[3]>0 && muonTrackLength[6]==0 )
                             {
-                                eMuonLength=muonTrackLength[1]+muonTrackLength[2]+muonTrackLength[3];
+                                //eMuonLength=muonTrackLength[1]+muonTrackLength[2]+muonTrackLength[3];
                             }
                             if( muonTrackLength[6]>0 && muonTrackLength[3]==0 )
                             {
-                                eMuonLength=muonTrackLength[1]+muonTrackLength[5]+muonTrackLength[6];
+                                //eMuonLength=muonTrackLength[1]+muonTrackLength[5]+muonTrackLength[6];
                             }
+                            */
+                            eMuonLength=muonTrackLength[1]+muonTrackLength[0];
                             //std::cout<<"eMuonLength : "<<eMuonLength<<endl;
                             if( eMuonLength!=0 )
                             {
@@ -478,12 +717,6 @@ int main(int argc,char* args[])
             //fn
             if( anaFn )
             {
-                map<int,int> muonIndex;
-                for( int u=0 ; u<mtnum ; u++ )
-                {
-                    mt->GetEntry(u);
-                    muonIndex.insert(std::pair<int,int>(muonEventID,u));
-                }
                 for( int r=0 ; r<tnum ; r++ )
                 {
                     t->GetEntry(r);
@@ -493,7 +726,6 @@ int main(int argc,char* args[])
                         if(!((*CapVolumeName)[0]=="GD"||(*CapVolumeName)[0]=="LS")) continue;
                         nNum++;
                         float colliTime=ColliTime[0];
-
                         float firstColliTimeInLSorGD=0.;
                         float totalColliEloss=0.;
                         int throughGD=0;
@@ -612,6 +844,7 @@ int main(int argc,char* args[])
                     mt->GetEntry(v);
                     float stopMuonLength=0;
                     float stopMuonIntervalTime=0;
+                    /*
                     if( muonTrackLength[3]>0 && muonTrackLength[3]<100 && muonTrackLength[6]==0 )
                     {
                         stopMuonLength=muonTrackLength[1]+muonTrackLength[2];
@@ -620,6 +853,8 @@ int main(int argc,char* args[])
                     {
                         stopMuonLength=muonTrackLength[1]+muonTrackLength[5];
                     }
+                    */
+                    stopMuonLength=muonTrackLength[1]+muonTrackLength[0];
                     if( stopMuonLength!=0 )
                     {
                         stopMuonIntervalTime=stopMuonLength/1000/(0.3*sqrt(1-1/((muonInitKineE/muonMass)*(muonInitKineE/muonMass))));

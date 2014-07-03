@@ -7,9 +7,10 @@
 #include  "math.h"
 #include  <vector>
 #include  "TInterpreter.h"
-#ifdef __MAKECINT__
-#pragma link C++ class vector<float>+;
-#endif
+#include  <stdlib.h>
+//#ifdef __MAKECINT__
+//#pragma link C++ class vector<float>+;
+//#endif
 using namespace std;
 
 typedef struct event
@@ -22,9 +23,23 @@ typedef struct event
     float quenchedDepE;
     float time;
     int det;
+    int tag;//(1:fn)(2:DoubleNeutron)(3:MichelEletron)(4:CornerMuon)(5:other)
+    float firstHitTime;
+    string pos;
+    event()
+    {
+        x=0.;
+        y=0.;
+        z=0.;
+        dE=0.;
+        quenchedDepE=0.;
+        time=0.;
+        firstHitTime=0.;
+    }
 }Event;
 
 vector<Event> eventBuf;
+vector< pair<Event,Event> > fnPair;
 
 int muonNum;
 
