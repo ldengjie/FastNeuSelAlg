@@ -23,9 +23,10 @@ typedef struct event
     float quenchedDepE;
     float time;
     int det;
-    int tag;//(1:fn)(2:DoubleNeutron)(3:MichelEletron)(4:CornerMuon)(5:other)
+    float tag;//(1:fn)(2:DoubleNeutron)(3:MichelEletron)(4:CornerMuon)(5:other)
     float firstHitTime;
-    string pos;
+    string capVol;
+    string genVol;
     event()
     {
         x=0.;

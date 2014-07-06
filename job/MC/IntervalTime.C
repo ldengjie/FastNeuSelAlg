@@ -69,9 +69,11 @@ bool selectFn()
         for( unsigned int i=0 ; i<eventBuf.size() ; i++ )
         {
             Event _evt=eventBuf[i];
-            //1)
+            //1) AD event's energy >0.7MeV
             if(_evt.quenchedDepE<0.7) continue;
-            //2)AD muon
+            ////2)AD muon,time to IWS muon<100ns
+            //if(_evt.quenchedDepE>100&&_evt.det<5&&_evt.time<0.1)
+            //2)AD muon,time to IWS muon<2us
             if(_evt.quenchedDepE>100&&_evt.det<5&&_evt.time<2)
             {
                 if( canThroughOneAd )
@@ -88,7 +90,7 @@ bool selectFn()
             if(_evt.det>4) continue;
             if( !throughThisAd[_evt.det-1] )
             {
-                //3) muon cut <400us
+                //3) muon cut <400us ???
                 if( _evt.time<400)
                 {
                     if( adEventBuf[_evt.det-1].size()!=0 )
@@ -137,7 +139,6 @@ int main(int argc,char* args[])
     int rootNum=atoi(args[1]);
     gInterpreter->EnableAutoLoading();
 
-    //int rootNum=1;
     cout<<"rootNum : "<<rootNum<<endl;
     int anaStopMuon=0;
     int anaMichelElectron=0;
@@ -148,7 +149,6 @@ int main(int argc,char* args[])
     int number=0;
 
     TH1F* h = new TH1F("stopMuonIntervalTime","stopMuonIntervalTime",400,0,400);
-    //TH1F* h1 = new TH1F("velocity","velocity",1000,0.9,1);
     //
     TH1F* timeIntervalGd = new TH1F("timeIntervalGd","timeIntervalGd",400,0,400);
     TH2F* timeIntervalvsInitEGd= new TH2F("timeIntervalvsInitEGd","timeIntervalvsInitEGd",400,0,400,1000,0,1000);
@@ -165,7 +165,6 @@ int main(int argc,char* args[])
     TH1F* PEwithThroughGDGd=new TH1F("PEwithThroughGDGd","PEwithThroughGDGd",1000,0,1000);
     TH1F* fnPEtoyGd=new TH1F("fnPEtoyGd","fn prompt energy",10000,0,1000);
     TH1F* fnInitEtoyGd=new TH1F("fnInitEtoyGd","fnInitEtoyGd",10000,0,1000);
-
 
     TH1F* timeIntervalH = new TH1F("timeIntervalH","timeIntervalH",400,0,400);
     TH2F* timeIntervalvsInitEH= new TH2F("timeIntervalvsInitEH","timeIntervalvsInitEH",400,0,400,1000,0,1000);
@@ -413,163 +412,201 @@ int main(int argc,char* args[])
                         {
                             for( unsigned int k=0 ; k<fnPair.size() ; k++ )
                             {
-                                bool isMichelEletron=true;
-                                int eventTag=5; //fn:1 DoubleNeutron:2 MichelEletron:3 CornerMuon:4 other:5
+                                //bool isMichelEletron=true;
+                                bool delayedIsNetron=false;
+                                string delayedCapVol;
+                                float eventTag=6.; //fn:1 DoubleNeutron:2 MichelEletron:3 CornerMuon:4 other:5
                                 float eventFirstHitTime=0.;//us
-                                //float minCapTime=0.;
-                                //printEvt(fnPair[k].first);
-                                //printEvt(fnPair[k].second);
+                                float eventFirstHitTimeAllNeutron=0.;//us
                                 mt->GetEntry(muonIndex[fnPair[k].first.EventID]);
                                 int NumOfNeutron=0;
+                                //int NumOfMichelElectron=0;
                                 vector<Event> mcNeutronList;
                                 vector<Event> mcMichelElectronList;
-                                    for( int o=0 ; o<etnum ; o++ )
+
+                                //if( NumOfNeutron>0/*&&muonTrackLength[3*fnPair[k].first.det-1]=0.*/)//this muon doesn't pass through AD
+                                //{
+                                float pFTfromDN=0.;//first hit time of prompt signal that from this Delayed Signal Neutron
+                                float pEfromDN=0.;//energy of prompt signal that from this Delayed Signal Neutron
+                                float pEfromAN=0.;//energy of prompt signal that from all Neutron
+                                for( int r=0 ; r<tnum ; r++ )
+                                {
+                                    t->GetEntry(r);
+                                    if( muonEventID==EventID )
                                     {
-                                        et->GetEntry(o);
-                                        if(eEventID==muonEventID  )
-                                        {
-                                            //cout<<"find one MichelEletron "<<endl;
-                                            Event mcMichelElectronEvt;
-                                            mcMichelElectronEvt.dE=eKineE;
-                                            mcMichelElectronEvt.time=eMichelLocalTime;//us
-                                            mcMichelElectronEvt.pos=(*eVolume)[0];
-                                            mcMichelElectronList.push_back(mcMichelElectronEvt);
-                                        }
-                                        
-                                    }
-                                    for( int r=0 ; r<tnum ; r++ )
-                                    {
-                                        t->GetEntry(r);
-                                        if( CapGammaESum>0 &&muonEventID==EventID/*&&(*CapVolumeName)[0]!="MO"*/ )
+                                        if( CapGammaESum>0 )
                                         {
                                             NumOfNeutron++;
                                             Event mcNeutronEvt;
                                             mcNeutronEvt.dE=CapGammaESum;
                                             mcNeutronEvt.time=CapTime;//us
-                                            mcNeutronEvt.pos=(*CapVolumeName)[0];
-                                            //mcNeutronEvt.pos=(*CapTargetName)[0];
+                                            mcNeutronEvt.capVol=(*CapVolumeName)[0];
+                                            mcNeutronEvt.genVol=(*GenVolume)[0];
                                             mcNeutronList.push_back(mcNeutronEvt);
-                                        }
-                                        
-                                    }
-                                int nCapNum=0;
-                                
-                                if( NumOfNeutron>0 )
-                                {
-                                    float pFTfromDN=0.;//first hit time of prompt signal that from this Delayed Signal Neutron
-                                    float pEfromDN=0.;//energy of prompt signal that from this Delayed Signal Neutron
-                                    float pEfromAN=0.;//energy of prompt signal that from all Neutron
-                                    for( int r=0 ; r<tnum ; r++ )
-                                    {
-                                        t->GetEntry(r);
-                                        if( muonEventID==EventID )
-                                        {
-                                            if( CapGammaESum>0 )
+                                            for( int s=0 ; s<ColliNum ; s++ )
                                             {
-                                                nCapNum++;
-                                                //if( minCapTime==0. )
-                                                //{
-                                                //minCapTime=CapTime;
-                                                //}else
-                                                //{
-                                                //minCapTime=minCapTime>CapTime?CapTime:minCapTime;
-                                                //}
-                                                //if( (*CapTargetName)[0]=="/dd/Materials/Gd_157"||(*CapTargetName)[0]=="/dd/Materials/Gd_155"||(*CapVolumeName)[0]=="SST")
-                                                //if(1)
-                                                //{
-                                                for( int s=0 ; s<ColliNum ; s++ )
+                                                //find delayed signal
+                                                if( ((*CapTargetName)[0]=="/dd/Materials/Gd_157"||(*CapTargetName)[0]=="/dd/Materials/Gd_155"||(*CapVolumeName)[0]=="SST")&&(fnPair[k].second.time-CapTime<5))
                                                 {
-                                                    //find delayed signal
-                                                    if( ((*CapTargetName)[0]=="/dd/Materials/Gd_157"||(*CapTargetName)[0]=="/dd/Materials/Gd_155"||(*CapVolumeName)[0]=="SST")&&(fnPair[k].second.time-CapTime<5))
+                                                    //isMichelEletron=false;
+                                                    delayedIsNetron=true;
+                                                    delayedCapVol=(*CapVolumeName)[0];
+                                                    //get first hit time caused by this neutron
+                                                    if((*ColliVolume)[s]=="LS" ||(*ColliVolume)[s]=="GD") 
                                                     {
-                                                        isMichelEletron=false;
-                                                        //get first hit time caused by this neutron
-                                                        if((*ColliVolume)[s]=="LS" ||(*ColliVolume)[s]=="GD") 
+                                                        if( pFTfromDN==0. )
                                                         {
-                                                            if( pFTfromDN==0. )
-                                                            {
-                                                                pFTfromDN=ColliTime[s];
-                                                            }else
-                                                            {
-                                                                pFTfromDN=pFTfromDN>ColliTime[s]?ColliTime[s]:pFTfromDN;
-                                                            }
-                                                            pEfromDN+=ColliEloss[s];
-                                                        }
-                                                        if(muonTrackLength[3*fnPair[k].first.det-1]>0.)
+                                                            pFTfromDN=ColliTime[s];
+                                                        }else
                                                         {
-                                                            eventTag=4;
-                                                            //eventFirstHitTime=(muonTrackLength[0]+muonTrackLength[1]+muonTrackLength[3*fnPair[k].first.det-1])/1000/(0.3*sqrt(1-1/((muonInitKineE/muonMass)*(muonInitKineE/muonMass))))/1000;
-                                                            eventFirstHitTime=(muonTrackLength[0]+muonTrackLength[1])/1000/(0.3*sqrt(1-1/((muonInitKineE/muonMass)*(muonInitKineE/muonMass))))/1000;
+                                                            pFTfromDN=pFTfromDN>ColliTime[s]?ColliTime[s]:pFTfromDN;
                                                         }
-
+                                                        pEfromDN+=ColliEloss[s];
                                                     }
+
                                                 }
-                                                    //if(muonQuenchedTotalEnergyDep[(fnPair[k].first.det-1)*2]+muonQuenchedTotalEnergyDep[1+(fnPair[k].first.det-1)*2]>0. )
-                                                    //{
-                                                        double eventFirstHitTimeThisNeutron=0.;
-                                                        //cout<<"... [InitE:"<<InitKineE <<"MeV CapedBy:"<<(*CapTargetName)[0] <<"] "<<"ColliVolume";
-                                                        for( int s=0 ; s<ColliNum ; s++ )
-                                                        {
-                                                            //cout<<" ["<<s<<"/"<<ColliNum<<"]:"<<(*ColliVolume)[s]<<","<<ColliEloss[s]<<"MeV,"<<ColliTime[s]*1000<<"ns";
-                                                            if((*ColliVolume)[s]=="LS" ||(*ColliVolume)[s]=="GD") 
-                                                            {
-                                                                if( eventFirstHitTime==0. )
-                                                                {
-                                                                    eventFirstHitTime=ColliTime[s];
-                                                                }else
-                                                                {
-                                                                    eventFirstHitTime=eventFirstHitTime>ColliTime[s]?ColliTime[s]:eventFirstHitTime;
-                                                                }
-                                                                if( eventFirstHitTimeThisNeutron==0. )
-                                                                {
-                                                                    eventFirstHitTimeThisNeutron=ColliTime[s];
-                                                                }else
-                                                                {
-                                                                    eventFirstHitTimeThisNeutron=eventFirstHitTimeThisNeutron>ColliTime[s]?ColliTime[s]:eventFirstHitTimeThisNeutron;
-                                                                }
-                                                                pEfromAN+=ColliEloss[s];
-                                                            }
-                                                        }
-                                                        //cout<<endl;
-                                                        ////cout<<"  >>eventFirstHitTime  : "<<eventFirstHitTime*1000<<endl;
-                                                        //cout<<"  >>eventFirstHitTime  : "<<eventFirstHitTimeThisNeutron*1000<<endl;
-                                                        //}
-                                                    //}
                                             }
-                                        }
-                                    }
-                                    if( eventTag!=4 )//this muon doesn't pass through AD
-                                    {
-                                        if( pEfromDN!=0.&&pFTfromDN!=0. )//delayed signal is neutron
-                                        {
-                                            if( pEfromAN==pEfromDN&&pFTfromDN==eventFirstHitTime )//prompt and delayed signal from the same neutron
+                                            double eventFirstHitTimeThisNeutron=0.;
+                                            cout<<"... [InitE:"<<InitKineE <<"MeV @"<<(*GenVolume)[0] <<" CapedBy:"<<(*CapTargetName)[0] <<"] "<<"ColliVolume";
+                                            for( int s=0 ; s<ColliNum ; s++ )
                                             {
-                                                eventTag=1;
-                                            }else if(eventFirstHitTime!=0.&&eventFirstHitTime<fnPair[k].first.time)
-                                            {
-                                                eventTag=2;
+                                                cout<<" ["<<s<<"/"<<ColliNum<<"]:"<<(*ColliVolume)[s]<<","<<ColliEloss[s]<<"MeV,"<<ColliTime[s]*1000<<"ns";
+                                                if((*ColliVolume)[s]=="LS" ||(*ColliVolume)[s]=="GD") 
+                                                {
+                                                    if( eventFirstHitTimeAllNeutron==0. )
+                                                    {
+                                                        eventFirstHitTimeAllNeutron=ColliTime[s];
+                                                    }else
+                                                    {
+                                                        eventFirstHitTimeAllNeutron=eventFirstHitTimeAllNeutron>ColliTime[s]?ColliTime[s]:eventFirstHitTimeAllNeutron;
+                                                    }
+                                                    if( eventFirstHitTimeThisNeutron==0. )
+                                                    {
+                                                        eventFirstHitTimeThisNeutron=ColliTime[s];
+                                                    }else
+                                                    {
+                                                        eventFirstHitTimeThisNeutron=eventFirstHitTimeThisNeutron>ColliTime[s]?ColliTime[s]:eventFirstHitTimeThisNeutron;
+                                                    }
+                                                    pEfromAN+=ColliEloss[s];
+                                                }
                                             }
-                                            //eventFirstHitTime=minCapTime;
+                                            cout<<endl;
+                                            cout<<"  >>:eventFirstHitTimeThisNeutron "<<eventFirstHitTimeThisNeutron*1000<<endl;
                                         }
                                     }
                                 }
-                                if( isMichelEletron&&eventTag==5 )
+
+                                for( int o=0 ; o<etnum ; o++ )
                                 {
-                                    for( int o=0 ; o<etnum ; o++ )
+                                    et->GetEntry(o);
+                                    if(eEventID==muonEventID )
                                     {
-                                        et->GetEntry(o);
-                                        if(eEventID==muonEventID  )
+                                        //NumOfMichelElectron++;   //cout<<"find one MichelEletron "<<endl;
+                                        Event mcMichelElectronEvt;
+                                        mcMichelElectronEvt.dE=eKineE;
+                                        mcMichelElectronEvt.time=eMichelLocalTime;//us
+                                        mcMichelElectronEvt.capVol=(*eVolume)[0];
+                                        mcMichelElectronList.push_back(mcMichelElectronEvt);
+                                        if( muonTrackLength[3*fnPair[k].first.det-1]>0. )
                                         {
-                                            eventTag=3;
-                                            //eventFirstHitTime=(muonTrackLength[0]+muonTrackLength[1]+muonTrackLength[3*fnPair[k].first.det-1]+muonTrackLength[3*fnPair[k].first.det]+muonTrackLength[3*fnPair[k].first.det+1])/1000/(0.3*sqrt(1-1/((muonInitKineE/muonMass)*(muonInitKineE/muonMass))))/1000;
-                                            eventFirstHitTime=(muonTrackLength[0]+muonTrackLength[1])/1000/(0.3*sqrt(1-1/((muonInitKineE/muonMass)*(muonInitKineE/muonMass))))/1000;
-                                            break;
+                                            if( eKineE>=6.0 )
+                                            {
+                                                eventTag=3.;
+                                            }else if(eKineE>=0.7&&eKineE<6.0)
+                                            {
+                                                eventTag=3.1;
+                                            }else
+                                            {
+                                                eventTag=3.2;
+                                            }
+                                        }else
+                                        {
+                                            if( eKineE>=6.0 )
+                                            {
+                                                eventTag=3.3;
+                                            }else if(eKineE>=0.7&&eKineE<6.0)
+                                            {
+                                                eventTag=3.4;
+                                            }else
+                                            {
+                                                eventTag=3.5;
+                                            }
+                                        }
+                                        break;
+                                    }
+                                    eventFirstHitTime=(muonTrackLength[0]+muonTrackLength[1])/1000/(0.3*sqrt(1-1/((muonInitKineE/muonMass)*(muonInitKineE/muonMass))))/1000;
+                                }
+
+                                if( eventTag==6 )//is not MichelElectron,find corner muon
+                                {
+                                    if(muonTrackLength[3*fnPair[k].first.det-1]>0.)
+                                    {
+                                        if( delayedIsNetron )
+                                        {
+                                            eventTag=4.0;//don't where is the prompt signal from,and delayed signal is from neutron captured on GD or SST
+                                        }else
+                                        {
+                                            eventTag=4.1;
+                                        }
+                                        eventFirstHitTime=(muonTrackLength[0]+muonTrackLength[1])/1000/(0.3*sqrt(1-1/((muonInitKineE/muonMass)*(muonInitKineE/muonMass))))/1000;
+                                    }else
+                                    {
+                                        if(delayedIsNetron)//delayed signal is neutron
+                                        {
+                                            if( eventFirstHitTimeAllNeutron!=0. )
+                                            {
+                                                if(pEfromDN!=0.&&pEfromAN==pEfromDN&&pFTfromDN==eventFirstHitTimeAllNeutron )//prompt and delayed signal from the same neutron
+                                                {
+                                                    if( delayedCapVol=="GD" )
+                                                    {
+                                                        eventTag=1.;
+                                                    }else if(delayedCapVol=="SST")
+                                                    {
+                                                        eventTag=1.1;
+                                                    }else
+                                                    {
+                                                        eventTag=1.2;//other
+                                                    }
+                                                }else if(eventFirstHitTimeAllNeutron<fnPair[k].first.time)
+                                                {
+                                                    eventTag=2.;
+                                                }else
+                                                {
+                                                    eventTag=5.3;
+                                                }
+                                                if( eventTag<=2. )
+                                                {
+                                                    eventFirstHitTime=eventFirstHitTimeAllNeutron;//!!!!
+                                                }
+                                            }else
+                                            {
+                                                eventTag=5.;
+                                            }
+                                        }else
+                                        {
+                                            if( NumOfNeutron>0 )
+                                            {
+                                                eventTag=5.1;
+                                            }else if( NumOfNeutron==0 )
+                                            {
+                                                eventTag=5.2;
+                                            }else
+                                            {
+                                                eventTag=5.4;//other
+                                            }
+                                        }
+                                        if( eventTag>=5.&&eventTag<6. )
+                                        {
+                                            eventFirstHitTime=fnPair[k].first.time;
                                         }
                                     }
+
                                 }
+
+
                                 //tag=5,(1)i don't where is the prompt signal from,and delayed signal is from neutron captured on GD or SST.(2)MichelEletron
                                 fnPair[k].first.tag=eventTag;
-                                fnPair[k].first.firstHitTime=eventFirstHitTime*1000;
+                                fnPair[k].first.firstHitTime=eventFirstHitTime;
                                 mp_spallScaledE[0]=fnPair[k].first.quenchedDepE;
                                 mp_spallEnergy[0]=fnPair[k].first.dE;
                                 mp_spallTrigNanoSec[0]=(int)(fnPair[k].first.time*1000);
@@ -578,9 +615,9 @@ int main(int argc,char* args[])
                                 mp_spallZ[0]=fnPair[k].first.z;
                                 mp_spallDetId[0]=fnPair[k].first.det;
                                 //tag for event.
-                                mp_spallNPmt[0]=fnPair[k].first.tag;
+                                mp_spallQuadrant[0]=fnPair[k].first.tag;
                                 mp_spallMaxQ[0]=muonInitKineE;
-                                mp_spallFirstHitTime[0]=fnPair[k].first.firstHitTime;
+                                mp_spallFirstHitTime[0]=eventFirstHitTime*1000;
 
                                 mp_spallScaledE[1]=fnPair[k].second.quenchedDepE;
                                 mp_spallEnergy[1]=fnPair[k].first.dE;
@@ -601,7 +638,7 @@ int main(int argc,char* args[])
                                 mp_spallZ[0]=0.;
                                 mp_spallDetId[0]=0;
                                 //tag for event.
-                                mp_spallNPmt[0]=0;
+                                mp_spallQuadrant[0]=0;
                                 mp_spallMaxQ[0]=0.;
                                 mp_spallFirstHitTime[0]=0.;
 
@@ -613,29 +650,26 @@ int main(int argc,char* args[])
                                 mp_spallZ[1]=0.;
                                 mp_spallDetId[1]=0;
 
-                                //cout<<"["<<fnPair[k].first.tag <<" "<<muonEventID <<" "<< fnPair[k].first.quenchedDepE<<"("<<fnPair[k].first.time*1000 <<"ns),"<<fnPair[k].second.quenchedDepE<<"("<<fnPair[k].second.time <<"us)] ";
-                                //cout<<Form("[tag=%d det=%d evtID=%5d %3.2f->%3.2fMeV(%4.2fns->%4.2fns) %2.2f->%2.2fMeV(*us->%3.2fus)]",fnPair[k].first.tag,fnPair[k].first.det,muonEventID,fnPair[k].first.dE,fnPair[k].first.quenchedDepE,fnPair[k].first.firstHitTime*1000,fnPair[k].first.time*1000,fnPair[k].second.dE,fnPair[k].second.quenchedDepE,fnPair[k].second.time);
+                                cout<<Form("[tag=%.1f det=%d evtID=%5d %3.2f->%3.2fMeV(%4.2fns->%4.2fns) %2.2f->%2.2fMeV(*us->%3.2fus)]",fnPair[k].first.tag,fnPair[k].first.det,muonEventID,fnPair[k].first.dE,fnPair[k].first.quenchedDepE,fnPair[k].first.firstHitTime*1000,fnPair[k].first.time*1000,fnPair[k].second.dE,fnPair[k].second.quenchedDepE,fnPair[k].second.time);
 
-                                //float muonFT=(muonTrackLength[0]+muonTrackLength[1]+muonTrackLength[3*fnPair[k].first.det-1])/1000/(0.3*sqrt(1-1/((muonInitKineE/muonMass)*(muonInitKineE/muonMass))))/1000;
                                 float muonFT=(muonTrackLength[0]+muonTrackLength[1])/1000/(0.3*sqrt(1-1/((muonInitKineE/muonMass)*(muonInitKineE/muonMass))))/1000;
                                 float muonFT2=(muonTrackLength[2])/1000/(0.3*sqrt(1-1/((muonInitKineE/muonMass)*(muonInitKineE/muonMass))))/1000;
                                 float muonFT3=(muonTrackLength[5])/1000/(0.3*sqrt(1-1/((muonInitKineE/muonMass)*(muonInitKineE/muonMass))))/1000;
-                                //float muonQE=muonQuenchedTotalEnergyDep[(fnPair[k].first.det-1)*2]+muonQuenchedTotalEnergyDep[1+(fnPair[k].first.det-1)*2];
                                 float muonQE=muonQuenchedTotalEnergyDep[0]+muonQuenchedTotalEnergyDep[1];
                                 float muonQE2=muonQuenchedTotalEnergyDep[2]+muonQuenchedTotalEnergyDep[3];
-                                //cout<<endl;
-                                //cout<<Form("    mu(InitE:%3.2fMeV ad1:%3.8fMeV ad2:%3.8fMeV ws:%4.2fns mo1:%4.2fns mo2:%4.2fns)",muonInitKineE,muonQE,muonQE2,muonFT*1000,muonFT2*1000,muonFT3*1000);
+                                cout<<endl;
+                                cout<<Form("    mu(InitE:%3.2fMeV ad1:%3.8fMeV ad2:%3.8fMeV ws:%4.2fns mo1:%4.2fns mo2:%4.2fns)",muonInitKineE,muonQE,muonQE2,muonFT*1000,muonFT2*1000,muonFT3*1000);
 
                                 int eNum=mcMichelElectronList.size();
                                 float eE=0.;
                                 float eT=0.;
                                 string eP;
-                                    for( int n=0 ; n<eNum ; n++ )
+                                for( int n=0 ; n<eNum ; n++ )
                                 {
                                     eE=mcMichelElectronList[n].dE;
                                     eT=mcMichelElectronList[n].time;
-                                    eP=mcMichelElectronList[n].pos;
-                                    //cout<<Form(" e(%3.8fMeV %4.2fus %3s)",eE,eT,eP.c_str());
+                                    eP=mcMichelElectronList[n].capVol;
+                                    cout<<Form(" e(%3.8fMeV %4.2fus @%s)",eE,eT,eP.c_str());
                                 }
                                 int nNum=mcNeutronList.size();
                                 float nE=0.;
@@ -645,292 +679,280 @@ int main(int argc,char* args[])
                                 {
                                     nE=mcNeutronList[n].dE;
                                     nT=mcNeutronList[n].time;
-                                    nP=mcNeutronList[n].pos;
-                                    //cout<<Form(" n(%3.2fMeV %4.2fus %3s)",nE,nT,nP.c_str());
+                                    nP=mcNeutronList[n].capVol;
+                                    cout<<Form(" n(%3.2fMeV %4.2fus %3s)",nE,nT,nP.c_str());
                                 }
-                                
-                                //cout<<endl;
-                                //cout<<endl;
+
+                                cout<<endl;
+                                cout<<endl;
                                 mcNeutronList.clear();
                                 mcMichelElectronList.clear();
                             }
 
-                        }
-                        _relTime=0.;
-                    }
-                    _relTime+=stime;
-                    if( _dE==0. )
-                    {
-                        _time=_relTime; 
-                    }
-                    _eventID=sEventID;
-                    _x=sx;
-                    _y=sy;
-                    _z=sz;
-                    _dE+=sdE;
-                    _quenchedDepE+=squenchedDepE;
-                    _det=detTmp;
-
-                }
-
-            }
-            //MichelElectron 
-            if( anaMichelElectron )
-            {
-                for( int o=0 ; o<etnum ; o++ )
-                {
-                    et->GetEntry(o);
-                    if(!((*eVolume)[0]=="GD" || (*eVolume)[0]=="LS" ||(*eVolume)[0]=="MO")) continue;
-                    for( int p=0 ; p<mtnum ; p++ )
-                    {
-                        mt->GetEntry(p);
-                        float eMuonLength=0;
-                        float eMuonIntervalTime=0;
-
-                        if( muonEventID==eEventID )
-                        { 
-                            /*
-                            if( muonTrackLength[3]>0 && muonTrackLength[6]==0 )
-                            {
-                                //eMuonLength=muonTrackLength[1]+muonTrackLength[2]+muonTrackLength[3];
                             }
-                            if( muonTrackLength[6]>0 && muonTrackLength[3]==0 )
-                            {
-                                //eMuonLength=muonTrackLength[1]+muonTrackLength[5]+muonTrackLength[6];
-                            }
-                            */
-                            eMuonLength=muonTrackLength[1]+muonTrackLength[0];
-                            //std::cout<<"eMuonLength : "<<eMuonLength<<endl;
-                            if( eMuonLength!=0 )
-                            {
-                                number++;
-                                //std::cout<<"number : "<<number<<endl;
-                                eMuonIntervalTime=eMuonLength/1000/(0.3*sqrt(1-1/((muonInitKineE/muonMass)*(muonInitKineE/muonMass))));
-                                //std::cout<<"eMuonIntervalTime : "<<eMuonIntervalTime<<endl;
-                                h3->Fill(eMuonIntervalTime);
-                            } 
-                            break;
+                            _relTime=0.;
                         }
-                    }
-                }
-            }
-            //fn
-            if( anaFn )
-            {
-                for( int r=0 ; r<tnum ; r++ )
-                {
-                    t->GetEntry(r);
-                    if(GenVolume->begin()==GenVolume->end()||ColliVolume->begin()==ColliVolume->end()) continue;
-                    if( (*GenVolume)[0]=="IWS" )
-                    {
-                        if(!((*CapVolumeName)[0]=="GD"||(*CapVolumeName)[0]=="LS")) continue;
-                        nNum++;
-                        float colliTime=ColliTime[0];
-                        float firstColliTimeInLSorGD=0.;
-                        float totalColliEloss=0.;
-                        int throughGD=0;
-                        int ColliNumBeforeLS=999;
-                        //float totalColliTime=ColliTime[0];
-                        //cout<<"size of ColliEloss : "<<sizeof(ColliEloss)/sizeof(ColliEloss[0])<<endl;
-                        //int sizeOfColliEloss=sizeof(ColliEloss)/sizeof(ColliEloss[0]);
-                        //cout<<" "<<endl;
-                        //cout<<"ColliNum("<<ColliNum<<") : ";
-                        for( int s=0 ; s<ColliNum ; s++ )
+                        _relTime+=stime;
+                        if( _dE==0. )
                         {
-                            //cout<<ColliEloss[s]<<"("<<(*ColliVolume)[s]<<","<<(ColliTime[s]-colliTime)*1000 <<") ";
-                            colliTime=ColliTime[s];
-                            if((*ColliVolume)[s]=="LS" ||(*ColliVolume)[s]=="GD") 
-                            {
-                                if(firstColliTimeInLSorGD==0.) firstColliTimeInLSorGD=ColliTime[s];
-                                totalColliEloss+=ColliEloss[s]; 
-                                if((*ColliVolume)[s]=="GD") throughGD=1;
-                                if(ColliNumBeforeLS==999&&(*ColliVolume)[s]=="LS") ColliNumBeforeLS=s;
-                            }
-                            //totalColliTime=ColliTime[s]-ColliTime[0];
-
+                            _time=_relTime; 
                         }
-                        //if( totalColliEloss>0.7 )
-                        //{
-                        fnInitE->Fill(InitKineE);
-                        if( firstColliTimeInLSorGD !=0.)
-                        {
-                            mt->GetEntry(muonIndex[EventID]);
-                            intervalTime=firstColliTimeInLSorGD-muonInitTime; 
-                            //if( CapGammaESum>6.0&&CapGammaESum<12.0 )
-                            if((*CapTargetName)[0]=="/dd/Materials/Gd_157"||(*CapTargetName)[0]=="/dd/Materials/Gd_155")
-                            {
-                                timeIntervalGd->Fill(intervalTime*1000);
-                                timeIntervalvsInitEGd->Fill(intervalTime*1000,InitKineE);
-                                fnPEGd->Fill(totalColliEloss);
-                                fnInitEGd->Fill(InitKineE);
-                                fnInitEtoyGd->Fill(InitKineE);
-                                PEvsInitEGd->Fill(totalColliEloss,InitKineE);
-                                PEvstimeIntervalGd->Fill(totalColliEloss,intervalTime*1000);
-                                PEvsRGd->Fill(totalColliEloss,sqrt(InitLocalX*InitLocalX+InitLocalY*InitLocalY));
-                                PEvsZGd->Fill(totalColliEloss,InitLocalZ);
-                                fnPEtoyGd->Fill(totalColliEloss);
-                                PEvsPosTagGd->Fill(totalColliEloss,throughGD);
-                                if( throughGD )
-                                {
-                                    PEwithThroughGDGd->Fill(totalColliEloss); 
-                                } else
-                                {
-                                    PEwithThroughLSGd->Fill(totalColliEloss);
-                                }
-                                if( intervalTime*1000>=55 )
-                                {
-                                    fnPEmoreGd->Fill(totalColliEloss);
-                                } else
-                                {
-                                    fnPElessGd->Fill(totalColliEloss);
-                                }
-                            }
-                            //if( CapGammaESum>1.8&&CapGammaESum<2.8 )
-                            if((*CapTargetName)[0]=="/dd/Materials/TS_H_of_Water")
-                            {
-                                timeIntervalH->Fill(intervalTime*1000);
-                                timeIntervalvsInitEH->Fill(intervalTime*1000,InitKineE);
-                                fnPEH->Fill(totalColliEloss);
-                                fnInitEH->Fill(InitKineE);
-                                fnInitEtoyH->Fill(InitKineE);
-                                PEvsInitEH->Fill(totalColliEloss,InitKineE);
-                                PEvstimeIntervalH->Fill(totalColliEloss,intervalTime*1000);
-                                PEvsRH->Fill(totalColliEloss,sqrt(InitLocalX*InitLocalX+InitLocalY*InitLocalY));
-                                PEvsZH->Fill(totalColliEloss,InitLocalZ);
-                                fnPEtoyH->Fill(totalColliEloss);
-                                PEvsPosTagH->Fill(totalColliEloss,throughGD);
-                                if( throughGD)
-                                {
-                                    PEwithThroughGDH->Fill(totalColliEloss); 
-                                } else
-                                {
-                                    PEwithThroughLSH->Fill(totalColliEloss);
-                                }
-                                if( intervalTime*1000>=55 )
-                                {
-                                    fnPEmoreH->Fill(totalColliEloss);
-                                } else
-                                {
-                                    fnPElessH->Fill(totalColliEloss);
-                                }
-                            }
-                            if( (*CapTargetName)[0]=="/dd/Materials/Gd_157"||(*CapTargetName)[0]=="/dd/Materials/Gd_155"||(*CapTargetName)[0]=="/dd/Materials/TS_H_of_Water" )
-                            {
-                                posInterval->Fill(sqrt((CapLocalX-ColliLocalX[ColliNum-1])*(CapLocalX-ColliLocalX[ColliNum-1])+(CapLocalY-ColliLocalY[ColliNum-1])*(CapLocalY-ColliLocalY[ColliNum-1])+(CapLocalZ-ColliLocalZ[ColliNum-1])*(CapLocalZ-ColliLocalZ[ColliNum-1])));
-                                fnPEtotal->Fill(totalColliEloss);
-                                fnPEtoytotal->Fill(totalColliEloss);
-                            }
-                            timeIntervalAllfn->Fill(intervalTime*1000);
-                            timeIntervalAllfnvsInitE->Fill(intervalTime*1000,InitKineE);
-                            if( ColliNumBeforeLS!=999 )
-                            {
-                                EbeforeLS->Fill(BeforeColliKineE[ColliNumBeforeLS]);
-                                ELossbeforeLS->Fill(InitKineE-BeforeColliKineE[ColliNumBeforeLS]);
-                            }
-                        }
+                        _eventID=sEventID;
+                        _x=sx;
+                        _y=sy;
+                        _z=sz;
+                        _dE+=sdE;
+                        _quenchedDepE+=squenchedDepE;
+                        _det=detTmp;
 
-                        //}
-                        //cout<<"(colli "<<totalColliEloss<<"MeV,"<<totalColliTime*1000<<"ns) (Captured by ["<<(*CapTargetName)[0]<<"],in ["<<(*CapVolumeName)[0]<<"],gammaE "<<CapGammaESum<<"MeV,time "<<(CapTime-colliTime)*1000 <<"ns)"<<endl;
-                        //cout<<"(Captured by ["<<(*CapTargetName)[0]<<"],in ["<<(*CapVolumeName)[0]<<"]"<<endl;
                     }
+
                 }
-                muonIndex.clear();
-            }
-            //stopmuon
-            if( anaStopMuon )
-            {
-                for( int v=0 ; v<mtnum ; v++ )
+                //MichelElectron 
+                if( anaMichelElectron )
                 {
-                    mt->GetEntry(v);
-                    float stopMuonLength=0;
-                    float stopMuonIntervalTime=0;
-                    /*
-                    if( muonTrackLength[3]>0 && muonTrackLength[3]<100 && muonTrackLength[6]==0 )
+                    for( int o=0 ; o<etnum ; o++ )
                     {
-                        stopMuonLength=muonTrackLength[1]+muonTrackLength[2];
+                        et->GetEntry(o);
+                        if(!((*eVolume)[0]=="GD" || (*eVolume)[0]=="LS" ||(*eVolume)[0]=="MO")) continue;
+                        for( int p=0 ; p<mtnum ; p++ )
+                        {
+                            mt->GetEntry(p);
+                            float eMuonLength=0;
+                            float eMuonIntervalTime=0;
+
+                            if( muonEventID==eEventID )
+                            { 
+                                eMuonLength=muonTrackLength[1]+muonTrackLength[0];
+                                //std::cout<<"eMuonLength : "<<eMuonLength<<endl;
+                                if( eMuonLength!=0 )
+                                {
+                                    number++;
+                                    //std::cout<<"number : "<<number<<endl;
+                                    eMuonIntervalTime=eMuonLength/1000/(0.3*sqrt(1-1/((muonInitKineE/muonMass)*(muonInitKineE/muonMass))));
+                                    //std::cout<<"eMuonIntervalTime : "<<eMuonIntervalTime<<endl;
+                                    h3->Fill(eMuonIntervalTime);
+                                } 
+                                break;
+                            }
+                        }
                     }
-                    if( muonTrackLength[6]>0 && muonTrackLength[6]<100 && muonTrackLength[3]==0 )
+                }
+                //fn
+                if( anaFn )
+                {
+                    for( int r=0 ; r<tnum ; r++ )
                     {
-                        stopMuonLength=muonTrackLength[1]+muonTrackLength[5];
+                        t->GetEntry(r);
+                        if(GenVolume->begin()==GenVolume->end()||ColliVolume->begin()==ColliVolume->end()) continue;
+                        if( (*GenVolume)[0]=="IWS" )
+                        {
+                            if(!((*CapVolumeName)[0]=="GD"||(*CapVolumeName)[0]=="LS")) continue;
+                            nNum++;
+                            float colliTime=ColliTime[0];
+                            colliTime+=0.;
+                            float firstColliTimeInLSorGD=0.;
+                            float totalColliEloss=0.;
+                            int throughGD=0;
+                            int ColliNumBeforeLS=999;
+                            //float totalColliTime=ColliTime[0];
+                            //cout<<"size of ColliEloss : "<<sizeof(ColliEloss)/sizeof(ColliEloss[0])<<endl;
+                            //int sizeOfColliEloss=sizeof(ColliEloss)/sizeof(ColliEloss[0]);
+                            //cout<<" "<<endl;
+                            //cout<<"ColliNum("<<ColliNum<<") : ";
+                            for( int s=0 ; s<ColliNum ; s++ )
+                            {
+                                //cout<<ColliEloss[s]<<"("<<(*ColliVolume)[s]<<","<<(ColliTime[s]-colliTime)*1000 <<") ";
+                                colliTime=ColliTime[s];
+                                if((*ColliVolume)[s]=="LS" ||(*ColliVolume)[s]=="GD") 
+                                {
+                                    if(firstColliTimeInLSorGD==0.) firstColliTimeInLSorGD=ColliTime[s];
+                                    totalColliEloss+=ColliEloss[s]; 
+                                    if((*ColliVolume)[s]=="GD") throughGD=1;
+                                    if(ColliNumBeforeLS==999&&(*ColliVolume)[s]=="LS") ColliNumBeforeLS=s;
+                                }
+                                //totalColliTime=ColliTime[s]-ColliTime[0];
+
+                            }
+                            //if( totalColliEloss>0.7 )
+                            //{
+                            fnInitE->Fill(InitKineE);
+                            if( firstColliTimeInLSorGD !=0.)
+                            {
+                                mt->GetEntry(muonIndex[EventID]);
+                                intervalTime=firstColliTimeInLSorGD-muonInitTime; 
+                                //if( CapGammaESum>6.0&&CapGammaESum<12.0 )
+                                if((*CapTargetName)[0]=="/dd/Materials/Gd_157"||(*CapTargetName)[0]=="/dd/Materials/Gd_155")
+                                {
+                                    timeIntervalGd->Fill(intervalTime*1000);
+                                    timeIntervalvsInitEGd->Fill(intervalTime*1000,InitKineE);
+                                    fnPEGd->Fill(totalColliEloss);
+                                    fnInitEGd->Fill(InitKineE);
+                                    fnInitEtoyGd->Fill(InitKineE);
+                                    PEvsInitEGd->Fill(totalColliEloss,InitKineE);
+                                    PEvstimeIntervalGd->Fill(totalColliEloss,intervalTime*1000);
+                                    PEvsRGd->Fill(totalColliEloss,sqrt(InitLocalX*InitLocalX+InitLocalY*InitLocalY));
+                                    PEvsZGd->Fill(totalColliEloss,InitLocalZ);
+                                    fnPEtoyGd->Fill(totalColliEloss);
+                                    PEvsPosTagGd->Fill(totalColliEloss,throughGD);
+                                    if( throughGD )
+                                    {
+                                        PEwithThroughGDGd->Fill(totalColliEloss); 
+                                    } else
+                                    {
+                                        PEwithThroughLSGd->Fill(totalColliEloss);
+                                    }
+                                    if( intervalTime*1000>=55 )
+                                    {
+                                        fnPEmoreGd->Fill(totalColliEloss);
+                                    } else
+                                    {
+                                        fnPElessGd->Fill(totalColliEloss);
+                                    }
+                                }
+                                //if( CapGammaESum>1.8&&CapGammaESum<2.8 )
+                                if((*CapTargetName)[0]=="/dd/Materials/TS_H_of_Water")
+                                {
+                                    timeIntervalH->Fill(intervalTime*1000);
+                                    timeIntervalvsInitEH->Fill(intervalTime*1000,InitKineE);
+                                    fnPEH->Fill(totalColliEloss);
+                                    fnInitEH->Fill(InitKineE);
+                                    fnInitEtoyH->Fill(InitKineE);
+                                    PEvsInitEH->Fill(totalColliEloss,InitKineE);
+                                    PEvstimeIntervalH->Fill(totalColliEloss,intervalTime*1000);
+                                    PEvsRH->Fill(totalColliEloss,sqrt(InitLocalX*InitLocalX+InitLocalY*InitLocalY));
+                                    PEvsZH->Fill(totalColliEloss,InitLocalZ);
+                                    fnPEtoyH->Fill(totalColliEloss);
+                                    PEvsPosTagH->Fill(totalColliEloss,throughGD);
+                                    if( throughGD)
+                                    {
+                                        PEwithThroughGDH->Fill(totalColliEloss); 
+                                    } else
+                                    {
+                                        PEwithThroughLSH->Fill(totalColliEloss);
+                                    }
+                                    if( intervalTime*1000>=55 )
+                                    {
+                                        fnPEmoreH->Fill(totalColliEloss);
+                                    } else
+                                    {
+                                        fnPElessH->Fill(totalColliEloss);
+                                    }
+                                }
+                                if( (*CapTargetName)[0]=="/dd/Materials/Gd_157"||(*CapTargetName)[0]=="/dd/Materials/Gd_155"||(*CapTargetName)[0]=="/dd/Materials/TS_H_of_Water" )
+                                {
+                                    posInterval->Fill(sqrt((CapLocalX-ColliLocalX[ColliNum-1])*(CapLocalX-ColliLocalX[ColliNum-1])+(CapLocalY-ColliLocalY[ColliNum-1])*(CapLocalY-ColliLocalY[ColliNum-1])+(CapLocalZ-ColliLocalZ[ColliNum-1])*(CapLocalZ-ColliLocalZ[ColliNum-1])));
+                                    fnPEtotal->Fill(totalColliEloss);
+                                    fnPEtoytotal->Fill(totalColliEloss);
+                                }
+                                timeIntervalAllfn->Fill(intervalTime*1000);
+                                timeIntervalAllfnvsInitE->Fill(intervalTime*1000,InitKineE);
+                                if( ColliNumBeforeLS!=999 )
+                                {
+                                    EbeforeLS->Fill(BeforeColliKineE[ColliNumBeforeLS]);
+                                    ELossbeforeLS->Fill(InitKineE-BeforeColliKineE[ColliNumBeforeLS]);
+                                }
+                            }
+
+                            //}
+                            //cout<<"(colli "<<totalColliEloss<<"MeV,"<<totalColliTime*1000<<"ns) (Captured by ["<<(*CapTargetName)[0]<<"],in ["<<(*CapVolumeName)[0]<<"],gammaE "<<CapGammaESum<<"MeV,time "<<(CapTime-colliTime)*1000 <<"ns)"<<endl;
+                            //cout<<"(Captured by ["<<(*CapTargetName)[0]<<"],in ["<<(*CapVolumeName)[0]<<"]"<<endl;
+                        }
                     }
-                    */
-                    stopMuonLength=muonTrackLength[1]+muonTrackLength[0];
-                    if( stopMuonLength!=0 )
+                    muonIndex.clear();
+                }
+                //stopmuon
+                if( anaStopMuon )
+                {
+                    for( int v=0 ; v<mtnum ; v++ )
                     {
-                        stopMuonIntervalTime=stopMuonLength/1000/(0.3*sqrt(1-1/((muonInitKineE/muonMass)*(muonInitKineE/muonMass))));
-                        //std::cout<<"stopMuonIntervalTime : "<<stopMuonIntervalTime<<endl;
-                        //std::cout<<"stopMuonLength/1000 : "<<stopMuonLength/1000<<endl;
-                        //std::cout<<" "<<endl;
-                        h->Fill(stopMuonIntervalTime);
-                        //h1->Fill(TMath::Sqrt(1-1/((muonInitKineE/muonMass)*(muonInitKineE/muonMass))));
+                        mt->GetEntry(v);
+                        float stopMuonLength=0;
+                        float stopMuonIntervalTime=0;
+                        /*
+                           if( muonTrackLength[3]>0 && muonTrackLength[3]<100 && muonTrackLength[6]==0 )
+                           {
+                           stopMuonLength=muonTrackLength[1]+muonTrackLength[2];
+                           }
+                           if( muonTrackLength[6]>0 && muonTrackLength[6]<100 && muonTrackLength[3]==0 )
+                           {
+                           stopMuonLength=muonTrackLength[1]+muonTrackLength[5];
+                           }
+                           */
+                        stopMuonLength=muonTrackLength[1]+muonTrackLength[0];
+                        if( stopMuonLength!=0 )
+                        {
+                            stopMuonIntervalTime=stopMuonLength/1000/(0.3*sqrt(1-1/((muonInitKineE/muonMass)*(muonInitKineE/muonMass))));
+                            //std::cout<<"stopMuonIntervalTime : "<<stopMuonIntervalTime<<endl;
+                            //std::cout<<"stopMuonLength/1000 : "<<stopMuonLength/1000<<endl;
+                            //std::cout<<" "<<endl;
+                            h->Fill(stopMuonIntervalTime);
+                            //h1->Fill(TMath::Sqrt(1-1/((muonInitKineE/muonMass)*(muonInitKineE/muonMass))));
+                        }
+
                     }
 
                 }
-
             }
-            //***********************************************************************
+            fnFile->cd();
+            f->Close();
+        }
+
+        // h->Draw();
+        //h2->Draw();
+        //h3->Draw();
+        if( anaFn )
+        {
+
+            TFile* fr=new TFile(Form("MCdata/result_%d.root",rootNum),"RECREATE");
+            fr->cd();
+            timeIntervalGd->Write();
+            timeIntervalvsInitEGd->Write();
+            fnPElessGd->Write();
+            fnPEmoreGd->Write();
+            fnPEGd->Write();
+            fnInitEGd->Write();
+            PEvsInitEGd->Write();
+            PEvstimeIntervalGd->Write();
+            PEvsRGd->Write();
+            PEvsZGd->Write();
+            fnPEtoyGd->Write();
+            PEvsPosTagGd->Write();
+            PEwithThroughLSGd->Write();
+            PEwithThroughGDGd->Write();
+            fnInitEtoyGd->Write();
+
+            timeIntervalH->Write();
+            timeIntervalvsInitEH->Write();
+            fnPElessH->Write();
+            fnPEmoreH->Write();
+            fnPEH->Write();
+            fnInitEH->Write();
+            PEvsInitEH->Write();
+            PEvstimeIntervalH->Write();
+            PEvsRH->Write();
+            PEvsZH->Write();
+            fnPEtoyH->Write();
+            PEvsPosTagH->Write();
+            PEwithThroughLSH->Write();
+            PEwithThroughGDH->Write();
+            fnInitEtoyH->Write();
+
+            fnPEtotal->Write();
+            fnPEtoytotal->Write();
+            posInterval->Write();
+            EbeforeLS->Write();
+            ELossbeforeLS->Write();
+            timeIntervalAllfn->Write();
+            timeIntervalAllfnvsInitE->Write();
+            fnInitE->Write();
+            fr->Close();
         }
         fnFile->cd();
-        f->Close();
-        //delete f;
+        gDirectory->mkdir("IWSMuonTree");
+        gDirectory->cd("IWSMuonTree");
+        fnTree->Write("IWSMuonTree");
+        fnFile->Close();
+        return 1;
+
     }
-
-    // h->Draw();
-    //h2->Draw();
-    //h3->Draw();
-    if( anaFn )
-    {
-
-        TFile* fr=new TFile(Form("MCdata/result_%d.root",rootNum),"RECREATE");
-        fr->cd();
-        timeIntervalGd->Write();
-        timeIntervalvsInitEGd->Write();
-        fnPElessGd->Write();
-        fnPEmoreGd->Write();
-        fnPEGd->Write();
-        fnInitEGd->Write();
-        PEvsInitEGd->Write();
-        PEvstimeIntervalGd->Write();
-        PEvsRGd->Write();
-        PEvsZGd->Write();
-        fnPEtoyGd->Write();
-        PEvsPosTagGd->Write();
-        PEwithThroughLSGd->Write();
-        PEwithThroughGDGd->Write();
-        fnInitEtoyGd->Write();
-
-        timeIntervalH->Write();
-        timeIntervalvsInitEH->Write();
-        fnPElessH->Write();
-        fnPEmoreH->Write();
-        fnPEH->Write();
-        fnInitEH->Write();
-        PEvsInitEH->Write();
-        PEvstimeIntervalH->Write();
-        PEvsRH->Write();
-        PEvsZH->Write();
-        fnPEtoyH->Write();
-        PEvsPosTagH->Write();
-        PEwithThroughLSH->Write();
-        PEwithThroughGDH->Write();
-        fnInitEtoyH->Write();
-
-        fnPEtotal->Write();
-        fnPEtoytotal->Write();
-        posInterval->Write();
-        EbeforeLS->Write();
-        ELossbeforeLS->Write();
-        timeIntervalAllfn->Write();
-        timeIntervalAllfnvsInitE->Write();
-        fnInitE->Write();
-        fr->Close();
-    }
-    //TFile* fnFile1=new TFile(Form("MCdata/fn_%d.root",rootNum),"RECREATE");
-    fnFile->cd();
-    gDirectory->mkdir("IWSMuonTree");
-    gDirectory->cd("IWSMuonTree");
-    fnTree->Write("IWSMuonTree");
-    fnFile->Close();
-    //return 1;
-
-}
